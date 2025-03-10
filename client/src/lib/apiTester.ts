@@ -241,7 +241,7 @@ export async function testGoalLifecycle(): Promise<boolean> {
         currentValue: 0,
         unit: 'points',
         deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 1 week from now
-        categoryId: null,
+        categoryId: 0,
         reminderFrequency: 'daily',
         userId: 1
       }
@@ -398,7 +398,7 @@ export async function testCompleteUserJourney(): Promise<boolean> {
     
     // Get initial categories to check if we already have a Health category
     const initialCategoriesResult = await testEndpoint(ApiEndpoint.CATEGORIES);
-    let categoryId: number | null = null;
+    let categoryId: number = 0; // Default to 0 instead of null
     
     if (initialCategoriesResult.success) {
       // Look for existing Health category
@@ -414,7 +414,7 @@ export async function testCompleteUserJourney(): Promise<boolean> {
         // Note: Our API endpoints may not support category creation,
         // so we'll handle that gracefully and continue without a category
         // In a real app with full implementation, we would add a POST endpoint for categories
-        categoryId = null;
+        categoryId = 0;
       }
     }
     

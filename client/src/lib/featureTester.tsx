@@ -577,7 +577,7 @@ registerFeatureTest({
         currentValue: 0,
         unit: 'points',
         deadline: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 2 days from now
-        categoryId: null,
+        categoryId: 0,
         reminderFrequency: 'daily',
         userId: 1
       }
@@ -618,7 +618,7 @@ registerFeatureTest({
         currentValue: 0,
         unit: 'points',
         deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        categoryId: null,
+        categoryId: 0,
         reminderFrequency: 'daily',
         userId: 1
       }
