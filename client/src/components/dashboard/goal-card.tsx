@@ -25,9 +25,9 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onEdit }) => {
     : 0;
   
   const progressColor = 
-    progressPercentage >= 66 ? 'bg-green-500' : 
-    progressPercentage >= 33 ? 'bg-amber-500' : 
-    'bg-primary-600';
+    progressPercentage >= 66 ? 'progress-cyberpunk-indicator bg-green-600' : 
+    progressPercentage >= 33 ? 'progress-cyberpunk-indicator bg-amber-600' : 
+    'progress-cyberpunk-indicator bg-blue-600';
   
   const handleDelete = async () => {
     if (window.confirm("Are you sure you want to delete this goal?")) {
@@ -51,7 +51,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onEdit }) => {
   
   return (
     <>
-      <Card className="mb-4">
+      <Card className="mb-4 card border shadow-lg">
         <CardContent className="p-4">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-3">
             <div>
@@ -64,9 +64,9 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onEdit }) => {
                     {goal.category.name}
                   </Badge>
                 )}
-                <h4 className="text-lg font-semibold text-gray-800">{goal.description}</h4>
+                <h4 className="text-lg font-semibold heading-gradient">{goal.description}</h4>
               </div>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-gray-400 mt-1">
                 Deadline: {format(new Date(goal.deadline), "MMMM d, yyyy")}
               </p>
             </div>
@@ -74,46 +74,46 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onEdit }) => {
               <Button
                 variant="ghost" 
                 size="icon"
-                className="mr-2 hover:bg-gray-100" 
+                className="mr-2 hover:bg-gray-800 text-gray-300" 
                 onClick={() => onEdit && onEdit(goal)}
                 title="Edit Goal"
               >
-                <Edit className="h-5 w-5 text-gray-500" />
+                <Edit className="h-5 w-5" />
               </Button>
               <Button 
                 variant="ghost" 
                 size="icon"
-                className="hover:bg-gray-100" 
+                className="hover:bg-gray-800 text-gray-300" 
                 onClick={handleDelete}
                 title="Delete Goal"
               >
-                <Trash2 className="h-5 w-5 text-gray-500" />
+                <Trash2 className="h-5 w-5" />
               </Button>
             </div>
           </div>
           
           <div className="mb-3">
             <div className="flex justify-between mb-1">
-              <span className="text-sm font-medium text-gray-700">
+              <span className="text-sm font-medium text-gray-300">
                 Progress: {goal.currentValue.toFixed(1)} / {goal.targetValue} {goal.unit}
               </span>
               <span 
                 className={`text-sm font-medium ${
-                  progressPercentage >= 66 ? 'text-green-600' : 
-                  progressPercentage >= 33 ? 'text-amber-600' : 
-                  'text-primary-600'
+                  progressPercentage >= 66 ? 'text-green-400' : 
+                  progressPercentage >= 33 ? 'text-amber-400' : 
+                  'text-blue-400'
                 }`}
               >
                 {progressPercentage}%
               </span>
             </div>
-            <Progress value={progressPercentage} className="h-2" indicatorClassName={progressColor} />
+            <Progress value={progressPercentage} className="progress-cyberpunk" indicatorClassName={progressColor} />
           </div>
           
           <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-3">
             <Button 
               variant="default" 
-              className="md:flex-1 flex items-center justify-center"
+              className="md:flex-1 flex items-center justify-center bg-blue-900 hover:bg-blue-800 text-blue-100"
               onClick={() => setIsLoggingProgress(true)}
             >
               <PlusCircle className="h-4 w-4 mr-1" />
@@ -122,7 +122,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onEdit }) => {
             
             <Button 
               variant="outline" 
-              className="md:flex-1 flex items-center justify-center"
+              className="md:flex-1 flex items-center justify-center border-gray-700 text-gray-300 hover:bg-gray-800"
               onClick={() => {
                 // View Details functionality would go here
                 toast({

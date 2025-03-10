@@ -34,14 +34,14 @@ const Dashboard: React.FC = () => {
       {/* Page Header */}
       <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">Dashboard</h2>
-          <p className="text-gray-600">Track your progress and stay motivated</p>
+          <h2 className="text-2xl font-bold heading-gradient">Dashboard</h2>
+          <p className="text-gray-400">Track your progress and stay motivated</p>
         </div>
         
         <div className="mt-4 md:mt-0">
           <Button 
             onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center"
+            className="flex items-center bg-blue-900 hover:bg-blue-800 text-blue-100"
           >
             <Flag className="h-4 w-4 mr-1" />
             Create Goal
@@ -142,9 +142,9 @@ const Dashboard: React.FC = () => {
       {/* Action Items & Insights Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Action Items */}
-        <Card>
+        <Card className="card border shadow-lg">
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg font-semibold text-gray-800">Today's Actions</CardTitle>
+            <CardTitle className="text-lg font-semibold heading-gradient">Today's Actions</CardTitle>
           </CardHeader>
           <CardContent>
             {isActionItemsLoading ? (
@@ -155,12 +155,12 @@ const Dashboard: React.FC = () => {
                   <ActionItemCard 
                     key={item.id} 
                     item={item}
-                    icon={<Trophy className="h-5 w-5" />}
+                    icon={<Trophy className="h-5 w-5 text-blue-400" />}
                   />
                 ))}
               </ul>
             ) : (
-              <p className="text-center py-4 text-gray-500">No action items for today.</p>
+              <p className="text-center py-4 text-gray-400">No action items for today.</p>
             )}
           </CardContent>
         </Card>
