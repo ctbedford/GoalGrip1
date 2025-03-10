@@ -62,6 +62,21 @@ export function DebugToolchainInspector() {
     { name: 'Debug Contexts', query: 'getAllContexts()' },
     { name: 'Log Entries', query: 'debugStorage.getLogEntries()' },
   ]);
+  
+  // State for curl command executor
+  const [curlCommand, setCurlCommand] = useState('curl -X GET http://localhost:5000/api/debug');
+  const [curlResult, setCurlResult] = useState<string | null>(null);
+  const [curlError, setCurlError] = useState<string | null>(null);
+  const [isCurlLoading, setIsCurlLoading] = useState(false);
+  const [savedCurlCommands, setSavedCurlCommands] = useState<Array<{name: string, command: string}>>([
+    { name: 'List Debug Functions', command: 'curl -X GET http://localhost:5000/api/debug' },
+    { name: 'List Markdown Files', command: 'curl -X GET http://localhost:5000/api/debug/markdown/list' },
+    { name: 'Get README', command: 'curl -X GET http://localhost:5000/api/debug/markdown/content/README.md' },
+    { name: 'Get API Standards', command: 'curl -X GET http://localhost:5000/api/debug/markdown/content/API_STANDARDS.md' },
+    { name: 'Get Feature Status', command: 'curl -X GET http://localhost:5000/api/debug/getFeatureVerificationStatus' },
+    { name: 'Custom Debug Query', command: 'curl -X POST http://localhost:5000/api/debug/query -H "Content-Type: application/json" -d \'{"query": "getFeatureVerificationStatus()"}\''},
+  ]);
+  
   const { toast } = useToast();
 
   // Create a mapping of available functions from the imported modules
@@ -196,6 +211,143 @@ export function DebugToolchainInspector() {
       return `[Error Formatting Data: ${error instanceof Error ? error.message : 'Unknown error'}]`;
     }
   };
+  
+  // Execute curl command
+  const executeCurlCommand = async () => {
+    if (!curlCommand.trim()) {
+      setCurlError('Please enter a curl command');
+      return;
+    }
+    
+    setIsCurlLoading(true);
+    setCurlError(null);
+    
+    try {
+      // We can't directly execute curl in the browser, so we'll make a fetch request
+      // Parse the curl command to get URL, method, headers, and body
+      const commandParts = curlCommand.split(' ');
+      
+      // Find the URL (usually after -X METHOD or just after curl)
+      let url = '';
+      let method = 'GET';
+      let headers: Record<string, string> = {};
+      let body: string | null = null;
+      
+      // Extract method
+      const methodIndex = commandParts.indexOf('-X');
+      if (methodIndex !== -1 && methodIndex + 1 < commandParts.length) {
+        method = commandParts[methodIndex + 1];
+      }
+      
+      // Extract URL - it's usually the first thing that starts with http
+      for (const part of commandParts) {
+        if (part.startsWith('http')) {
+          url = part;
+          break;
+        }
+      }
+      
+      // Extract headers
+      let headerIndex = -1;
+      while ((headerIndex = commandParts.indexOf('-H', headerIndex + 1)) !== -1) {
+        if (headerIndex + 1 < commandParts.length) {
+          const headerValue = commandParts[headerIndex + 1].replace(/["']/g, '');
+          const [headerName, headerContent] = headerValue.split(':').map(s => s.trim());
+          headers[headerName] = headerContent;
+        }
+      }
+      
+      // Extract body
+      const dataIndex = commandParts.indexOf('-d');
+      if (dataIndex !== -1 && dataIndex + 1 < commandParts.length) {
+        body = commandParts[dataIndex + 1].replace(/^['"]|['"]$/g, '');
+      }
+      
+      // Log the curl execution attempt
+      logger.info(FeatureArea.API, 'Executing curl command', {
+        url,
+        method,
+        headers: Object.keys(headers),
+        bodySize: body ? body.length : 0
+      });
+      
+      if (!url) {
+        throw new Error('Could not parse URL from curl command');
+      }
+      
+      // Now execute the request
+      const response = await fetch(url, {
+        method,
+        headers,
+        body: body ? body : undefined
+      });
+      
+      // Get response as text
+      const responseText = await response.text();
+      
+      // Try to parse as JSON for pretty display if possible
+      try {
+        const jsonResponse = JSON.parse(responseText);
+        setCurlResult(JSON.stringify(jsonResponse, null, 2));
+      } catch {
+        // If not JSON, just show as text
+        setCurlResult(responseText);
+      }
+      
+      // Log success
+      logger.info(FeatureArea.API, 'Curl command executed successfully', {
+        status: response.status,
+        statusText: response.statusText,
+        responseSize: responseText.length
+      });
+      
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error executing curl command';
+      setCurlError(errorMessage);
+      
+      logger.error(FeatureArea.API, 'Error executing curl command', {
+        command: curlCommand,
+        error: errorMessage
+      });
+    } finally {
+      setIsCurlLoading(false);
+    }
+  };
+  
+  // Load a saved curl command
+  const loadSavedCurlCommand = (command: string) => {
+    setCurlCommand(command);
+    setActiveTab('curl');
+  };
+  
+  // Save current curl command
+  const saveCurrentCurlCommand = () => {
+    if (!curlCommand.trim()) return;
+    
+    const commandName = prompt('Enter a name for this curl command');
+    if (!commandName) return;
+    
+    setSavedCurlCommands([...savedCurlCommands, { name: commandName, command: curlCommand }]);
+    
+    toast({
+      title: 'Curl Command Saved',
+      description: `"${commandName}" has been saved to your command library`,
+      duration: 3000,
+    });
+  };
+  
+  // Copy curl result to clipboard
+  const copyCurlResultToClipboard = () => {
+    if (!curlResult) return;
+    
+    navigator.clipboard.writeText(curlResult);
+    
+    toast({
+      title: 'Copied to Clipboard',
+      description: 'The curl result has been copied to your clipboard',
+      duration: 2000,
+    });
+  };
 
   return (
     <Card className="w-full">
@@ -234,10 +386,14 @@ export function DebugToolchainInspector() {
       </CardHeader>
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid grid-cols-4 w-full max-w-md">
+          <TabsList className="grid grid-cols-5 w-full max-w-xl">
             <TabsTrigger value="query">
               <Code className="mr-2 h-4 w-4" />
               Query Editor
+            </TabsTrigger>
+            <TabsTrigger value="curl">
+              <Terminal className="mr-2 h-4 w-4" />
+              Curl Executor
             </TabsTrigger>
             <TabsTrigger value="library">
               <Search className="mr-2 h-4 w-4" />
@@ -303,6 +459,103 @@ export function DebugToolchainInspector() {
                     {queryResult 
                       ? formatJsonForDisplay(queryResult)
                       : 'Execute a query to see results here'}
+                  </pre>
+                </ScrollArea>
+              </div>
+            </div>
+          </TabsContent>
+          
+          {/* Curl Executor Tab */}
+          <TabsContent value="curl" className="space-y-4">
+            <div className="flex flex-col space-y-4">
+              <div className="flex items-start space-x-2">
+                <div className="flex-1">
+                  <Textarea
+                    placeholder="Enter a curl command (e.g., curl -X GET http://localhost:5000/api/debug)"
+                    value={curlCommand}
+                    onChange={(e) => setCurlCommand(e.target.value)}
+                    className="font-mono text-sm h-24 resize-none"
+                  />
+                </div>
+                <div className="flex flex-col space-y-2">
+                  <Button 
+                    onClick={executeCurlCommand}
+                    disabled={isCurlLoading || !curlCommand.trim()}
+                    className="whitespace-nowrap"
+                  >
+                    {isCurlLoading ? (
+                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Play className="mr-2 h-4 w-4" />
+                    )}
+                    Execute
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    size="sm"
+                    onClick={saveCurrentCurlCommand}
+                    disabled={!curlCommand.trim()}
+                    className="whitespace-nowrap"
+                  >
+                    <Save className="mr-2 h-4 w-4" />
+                    Save
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    size="sm"
+                    onClick={copyCurlResultToClipboard}
+                    disabled={!curlResult}
+                    className="whitespace-nowrap"
+                  >
+                    <Clipboard className="mr-2 h-4 w-4" />
+                    Copy Result
+                  </Button>
+                </div>
+              </div>
+              
+              {/* Curl Presets */}
+              <div>
+                <h3 className="text-sm font-medium mb-2">Presets:</h3>
+                <div className="flex flex-wrap gap-2">
+                  {savedCurlCommands.map((item, index) => (
+                    <Button 
+                      key={index} 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => loadSavedCurlCommand(item.command)}
+                      className="text-xs"
+                    >
+                      {item.name}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              
+              {curlError && (
+                <div className="bg-red-50 border border-red-200 p-3 rounded-md text-red-800 text-sm">
+                  <div className="flex items-start">
+                    <AlertCircle className="h-5 w-5 mr-2 text-red-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium">Error Executing Curl Command</p>
+                      <p className="mt-1">{curlError}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              <div className="bg-gray-900 border border-gray-700 rounded-md p-4 text-white">
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="font-medium text-white">Response:</h3>
+                  <Badge variant={curlResult ? "default" : "secondary"} className="bg-gray-800 hover:bg-gray-700">
+                    {curlResult ? "Response Received" : "No Response"}
+                  </Badge>
+                </div>
+                <Separator className="mb-3 bg-gray-700" />
+                <ScrollArea className="h-80 w-full rounded-md">
+                  <pre className="text-sm font-mono text-gray-300 whitespace-pre-wrap break-all">
+                    {curlResult 
+                      ? curlResult
+                      : '# Execute a curl command to see results here\n\n# Examples:\n- curl -X GET http://localhost:5000/api/debug\n- curl -X GET http://localhost:5000/api/debug/markdown/list'}
                   </pre>
                 </ScrollArea>
               </div>
