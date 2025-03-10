@@ -603,7 +603,11 @@ export function FeatureStatusDashboard() {
                                       <h4 className="font-semibold">{test.name}</h4>
                                       <p className="text-sm text-gray-500">{test.description}</p>
                                     </div>
-                                    <Badge variant={test.status === TestStatus.PASSED || test.status === 'passed' ? 'success' : 'destructive'}>
+                                    <Badge variant={
+                                      typeof test.status === 'string' 
+                                        ? test.status.toLowerCase() === 'passed' ? 'success' : 'destructive'
+                                        : test.status === TestStatus.PASSED ? 'success' : 'destructive'
+                                    }>
                                       {test.status}
                                     </Badge>
                                   </div>

@@ -651,7 +651,7 @@ export function EnhancedLogViewer() {
                           variant={
                             log.level === LogLevel.ERROR ? "destructive" :
                             log.level === LogLevel.WARN ? "default" :
-                            "outline"
+                            null
                           }
                           className="mb-2 cursor-pointer border-l-4 pl-3 border-l-blue-500"
                           onClick={() => toggleLogExpansion(index)}

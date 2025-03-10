@@ -556,7 +556,10 @@ export function PerformanceMetricsPanel() {
                           <YAxis />
                           <Tooltip 
                             formatter={(value, name) => {
-                              if (name === 'avgDuration') return [`${value.toFixed(2)} ms`, 'Avg Response Time'];
+                              if (name === 'avgDuration') {
+                                const numValue = typeof value === 'number' ? value : parseFloat(value as string);
+                                return [`${numValue.toFixed(2)} ms`, 'Avg Response Time'];
+                              }
                               if (name === 'count') return [value, 'Request Count'];
                               return [value, name];
                             }}
