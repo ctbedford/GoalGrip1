@@ -90,7 +90,26 @@ const DebugPage: React.FC = () => {
   // Clear logs
   const clearLogs = () => {
     setLogs([]);
+    debugStorage.clearLogs();
     logger.info(FeatureArea.UI, 'Debug console cleared');
+  };
+  
+  // Load persisted logs
+  const loadPersistedLogs = () => {
+    const storedLogs = debugStorage.getLogEntries();
+    if (storedLogs && storedLogs.length > 0) {
+      // Convert timestamp strings to Date objects
+      const processedLogs = storedLogs.map(log => ({
+        ...log,
+        // Ensure timestamp is a Date object
+        timestamp: log.timestamp instanceof Date ? log.timestamp : new Date(log.timestamp)
+      }));
+      
+      setLogs(processedLogs);
+      logger.info(FeatureArea.UI, `Loaded ${storedLogs.length} log entries from storage`);
+    } else {
+      logger.info(FeatureArea.UI, 'No persisted logs found');
+    }
   };
   
   // Run API tests
@@ -111,9 +130,44 @@ const DebugPage: React.FC = () => {
     }
   };
   
-  // Initialize log interception on first render
+  // Load saved API test results
+  const loadApiTestResults = () => {
+    const apiTests = debugStorage.getApiTestResults();
+    if (apiTests && apiTests.length > 0) {
+      // Simulate a report from the saved tests
+      const successCount = apiTests.filter(r => r.success).length;
+      const failCount = apiTests.length - successCount;
+      const successRate = apiTests.length > 0 
+        ? (successCount / apiTests.length * 100).toFixed(2) 
+        : 'N/A';
+      
+      let report = `# API Test Report (Loaded from Storage)\n\n`;
+      report += `Generated: ${new Date().toLocaleString()}\n\n`;
+      report += `## Summary\n\n`;
+      report += `- Total tests: ${apiTests.length}\n`;
+      report += `- Successful: ${successCount}\n`;
+      report += `- Failed: ${failCount}\n`;
+      report += `- Success rate: ${successRate}%\n\n`;
+      report += `## Test Results\n\n`;
+      
+      report += `| Endpoint | Method | Status | Success | Duration (ms) |\n`;
+      report += `|----------|--------|--------|---------|---------------|\n`;
+      
+      apiTests.forEach(result => {
+        report += `| ${result.endpoint} | ${result.method} | ${result.status} | ${result.success ? '✓' : '✗'} | ${result.duration.toFixed(2)} |\n`;
+      });
+      
+      setApiTestReport(report);
+      logger.info(FeatureArea.API, `Loaded ${apiTests.length} API test results from storage`);
+    } else {
+      logger.info(FeatureArea.API, 'No API test results found in storage');
+    }
+  };
+  
+  // Initialize log interception and load persisted logs on first render
   React.useEffect(() => {
     interceptLogs();
+    loadPersistedLogs();
   }, []);
   
   return (
@@ -161,12 +215,22 @@ const DebugPage: React.FC = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <Button 
-                  onClick={runApiTests} 
-                  disabled={isApiTesting}
-                >
-                  {isApiTesting ? 'Running Tests...' : 'Run API Tests'}
-                </Button>
+                <div className="flex space-x-2">
+                  <Button 
+                    onClick={runApiTests} 
+                    disabled={isApiTesting}
+                  >
+                    {isApiTesting ? 'Running Tests...' : 'Run API Tests'}
+                  </Button>
+                  
+                  <Button 
+                    variant="outline"
+                    onClick={loadApiTestResults}
+                    disabled={isApiTesting}
+                  >
+                    Load Saved Results
+                  </Button>
+                </div>
                 
                 {apiTestReport && (
                   <div className="mt-4">
@@ -197,9 +261,14 @@ const DebugPage: React.FC = () => {
                   <div className="text-sm text-gray-400">
                     Displaying {logs.length} log entries
                   </div>
-                  <Button variant="outline" size="sm" onClick={clearLogs}>
-                    Clear Logs
-                  </Button>
+                  <div className="flex space-x-2">
+                    <Button variant="outline" size="sm" onClick={loadPersistedLogs}>
+                      Load Saved Logs
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={clearLogs}>
+                      Clear Logs
+                    </Button>
+                  </div>
                 </div>
                 
                 <ScrollArea className="h-[500px] w-full rounded-md border">
