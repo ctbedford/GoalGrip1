@@ -40,6 +40,24 @@ const testResults: ApiTestResult[] = [];
 /**
  * Run a test on a specific API endpoint
  */
+/**
+ * Prepare data for API request by converting Date objects to ISO strings
+ */
+function prepareRequestData(data: any): any {
+  if (!data) return data;
+  
+  // Deep clone the data to avoid modifying the original
+  const preparedData = JSON.parse(JSON.stringify(data, (key, value) => {
+    // Convert Date objects to ISO strings
+    if (value instanceof Date) {
+      return value.toISOString();
+    }
+    return value;
+  }));
+  
+  return preparedData;
+}
+
 export async function testEndpoint(
   endpoint: string,
   method: 'GET' | 'POST' | 'PATCH' | 'DELETE' = 'GET',
@@ -52,6 +70,9 @@ export async function testEndpoint(
     url = url.replace(`:${key}`, value);
   });
   
+  // Prepare data for API request (handle Date objects)
+  const preparedData = prepareRequestData(data);
+  
   const startTime = performance.now();
   let result: ApiTestResult;
   
@@ -61,7 +82,7 @@ export async function testEndpoint(
     const response = await apiRequest(
       method,
       url,
-      data
+      preparedData
     );
     
     const endTime = performance.now();
