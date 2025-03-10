@@ -223,7 +223,7 @@ export function DebugToolchainInspector() {
     setCurlError(null);
     
     try {
-      // We can't directly execute curl in the browser, so we'll make a fetch request
+      // We can't directly execute curl in the browser, so we'll simulate the request
       // Parse the curl command to get URL, method, headers, and body
       const commandParts = curlCommand.split(' ');
       
@@ -275,32 +275,65 @@ export function DebugToolchainInspector() {
         throw new Error('Could not parse URL from curl command');
       }
       
-      // Now execute the request
-      const response = await fetch(url, {
-        method,
-        headers,
-        body: body ? body : undefined
-      });
-      
-      // Get response as text
-      const responseText = await response.text();
-      
-      // Try to parse as JSON for pretty display if possible
-      try {
-        const jsonResponse = JSON.parse(responseText);
-        setCurlResult(JSON.stringify(jsonResponse, null, 2));
-      } catch {
-        // If not JSON, just show as text
-        setCurlResult(responseText);
+      // Instead of using fetch directly (which would cause CORS issues),
+      // we'll check if the URL is on our own domain and use apiRequest
+      if (url.includes('localhost:5000') || url.includes('127.0.0.1:5000') || !url.includes('://')) {
+        // Extract the path from the URL (remove http://localhost:5000 part)
+        let path = url;
+        if (path.includes('://')) {
+          const urlObj = new URL(url);
+          path = urlObj.pathname + urlObj.search;
+        }
+        
+        // Use our API request utility which handles CORS and credentials
+        import('@/lib/queryClient').then(async ({ apiRequest }) => {
+          try {
+            const response = await apiRequest({
+              method,
+              url: path,
+              data: body ? JSON.parse(body) : undefined,
+              headers,
+            });
+            
+            // Format the response as JSON
+            setCurlResult(JSON.stringify(response, null, 2));
+            
+            // Log success
+            logger.info(FeatureArea.API, 'Curl command executed successfully', {
+              path,
+              method,
+              responseSize: JSON.stringify(response).length
+            });
+          } catch (error) {
+            // Handle API request error
+            setCurlError(`API Request Error: ${error instanceof Error ? error.message : String(error)}`);
+            logger.error(FeatureArea.API, 'API Request Error', {
+              path,
+              method,
+              error: error instanceof Error ? error.message : String(error)
+            });
+          }
+        });
+      } else {
+        // For external URLs, show a simulation mode message
+        setCurlResult(
+          JSON.stringify({
+            simulationMode: true,
+            message: "External URLs can't be fetched directly from the browser due to CORS restrictions",
+            requestInfo: {
+              url,
+              method,
+              headers: Object.keys(headers),
+              bodySize: body ? body.length : 0
+            }
+          }, null, 2)
+        );
+        
+        logger.info(FeatureArea.API, 'Curl command simulation mode (external URL)', {
+          url,
+          method
+        });
       }
-      
-      // Log success
-      logger.info(FeatureArea.API, 'Curl command executed successfully', {
-        status: response.status,
-        statusText: response.statusText,
-        responseSize: responseText.length
-      });
-      
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error executing curl command';
       setCurlError(errorMessage);
