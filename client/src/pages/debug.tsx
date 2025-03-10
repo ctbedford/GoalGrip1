@@ -27,6 +27,7 @@ import { EnhancedLogViewer } from '@/components/debug/enhanced-log-viewer';
 import { EnhancedApiDashboard } from '@/components/debug/enhanced-api-dashboard';
 import { PerformanceMetricsPanel } from '@/components/debug/performance-metrics-panel';
 import { Separator } from '@/components/ui/separator';
+import { UnifiedDebugDashboard } from '@/components/debug/UnifiedDebugDashboard';
 
 // Debug logs
 interface LogEntry {
@@ -243,50 +244,9 @@ const DebugPage: React.FC = () => {
           </TabsTrigger>
         </TabsList>
         
-        {/* Unified Feature Dashboard - combines feature status and testing */}
+        {/* New Unified Feature Dashboard */}
         <TabsContent value="unified-dashboard" className="mt-4">
-          <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <CardTitle className="text-xl">
-                  <CheckCircle2 className="h-5 w-5 inline mr-2 text-green-500" />
-                  Unified Feature Dashboard
-                </CardTitle>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => {
-                    // This button will be visible to run all tests directly from the dashboard view
-                    logger.info(FeatureArea.UI, "Initiated running all tests from unified dashboard");
-                  }}
-                >
-                  Run All Tests
-                </Button>
-              </div>
-              <CardDescription>
-                Monitor implementation status and run tests for all application features
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Feature Status Dashboard */}
-              <div className="mb-6">
-                <FeatureStatusDashboard />
-              </div>
-              
-              {/* Feature Tests section */}
-              <div>
-                <h3 className="text-lg font-semibold mb-3 flex items-center">
-                  <CheckCircle2 className="h-4 w-4 mr-2 text-green-500" />
-                  Feature Tests
-                </h3>
-                <p className="text-gray-500 text-sm mb-4">
-                  Run tests to verify implementation and update feature status
-                </p>
-                
-                <FeatureTester />
-              </div>
-            </CardContent>
-          </Card>
+          <UnifiedDebugDashboard />
         </TabsContent>
         
         {/* Enhanced Log Viewer */}

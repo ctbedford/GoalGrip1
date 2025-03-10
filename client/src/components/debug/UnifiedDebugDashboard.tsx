@@ -25,7 +25,7 @@ import { getFeatureVerificationStatus } from '@/lib/logger';
 import { TestStatus } from '@/lib/featureTester';
 import { getTestResults, runFeatureTest, getRegisteredTests } from '@/lib/featureTester';
 import * as debugStorage from '@/lib/debugStorage';
-import { getApiTestResults } from '@/lib/apiTester';
+import { getTestResults as getApiTestResults } from '@/lib/apiTester';
 import { FeatureStatusDashboard } from './feature-status-dashboard';
 import { EnhancedLogViewer } from './enhanced-log-viewer';
 import { EnhancedApiDashboard } from './enhanced-api-dashboard';
