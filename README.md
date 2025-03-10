@@ -26,6 +26,7 @@ The application includes a comprehensive debugging environment to help with deve
 1. **Feature Tests**: Test individual features to verify functionality
 2. **API Tests**: Test API endpoints to ensure backend connectivity
 3. **Debug Console**: View application logs and monitor system activity
+4. **Documentation Viewer**: Access formatted technical documentation directly in the app
 
 ### Using the Debug Console
 
@@ -41,6 +42,12 @@ The application includes a comprehensive debugging environment to help with deve
 **Log Console**
 - View real-time logs with filtering by level (DEBUG, INFO, WARN, ERROR)
 - Includes timestamp, module, and detailed error information when available
+
+**Documentation Viewer**
+- Access technical documentation with cyberpunk-styled formatting
+- Select from available markdown files in the dropdown
+- Use the refresh button to reload documentation files after changes
+- Documentation includes implementation analysis, feature testing guidelines, and debug infrastructure details
 
 ## Technical Implementation 
 

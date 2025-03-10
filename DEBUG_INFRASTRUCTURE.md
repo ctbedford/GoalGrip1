@@ -180,6 +180,19 @@ Comprehensive UI for viewing logs, running tests, and analyzing debug informatio
 - **API Test Runner**: Run and view results of API tests
 - **Export/Import**: Export and import debug data
 - **Clear Functions**: Clear logs and test results
+- **Documentation Viewer**: View formatted markdown documentation
+
+### 6. Markdown Documentation Viewer (`client/src/components/debug/markdown-viewer.tsx`)
+
+An integrated documentation viewer that displays formatted markdown files with cyberpunk styling.
+
+#### Features:
+
+- **File Selection**: Choose from available documentation files via a dropdown
+- **Styled Rendering**: Display markdown with cyberpunk-themed typography
+- **Refresh Capability**: Reload documentation files to see recent changes
+- **Error Handling**: Graceful error display for file loading issues
+- **Loading State**: Visual feedback during document loading
 
 ## Initialization and Configuration
 
@@ -264,6 +277,22 @@ export enum ApiEndpoint {
   NEW_ENDPOINT = '/api/new-endpoint',
 }
 ```
+
+### Adding New Documentation
+
+To add a new documentation file:
+
+1. Create a new Markdown file in the project root (e.g., `NEW_DOCUMENTATION.md`)
+2. Add the file to the `MARKDOWN_FILES` array in `client/src/components/debug/markdown-viewer.tsx`:
+
+```typescript
+const MARKDOWN_FILES = [
+  // Existing files...
+  { label: 'New Documentation', value: 'NEW_DOCUMENTATION.md' },
+];
+```
+
+3. Access the file through the Documentation Viewer in the Debug Console
 
 ## Conclusion
 

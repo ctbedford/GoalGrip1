@@ -142,6 +142,13 @@ This document provides comprehensive test cases for verifying the functionality 
 - **Test Result History**: Track feature and API test results over time
 - **Advanced Filtering**: Filter logs by level, area, and timestamp
 - **Performance Tracking**: Monitor execution time for tests and operations
+- **Documentation Viewer**: Cyberpunk-styled markdown documentation browser
+
+The documentation viewer provides easy access to:
+- Debug Infrastructure Documentation
+- Feature Testing Documentation
+- Implementation Analysis
+- README and other project documents
 
 For detailed information, refer to the [Debug Infrastructure Documentation](./DEBUG_INFRASTRUCTURE.md).
 
