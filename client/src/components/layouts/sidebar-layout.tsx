@@ -8,6 +8,7 @@ import {
   Settings,
   Menu,
   User,
+  Bug,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
@@ -94,6 +95,13 @@ export const SidebarLayout: React.FC<{ children: React.ReactNode }> = ({ childre
               href="/settings" 
               active={location === "/settings"} 
             />
+            <Separator className="my-2 bg-gray-800" />
+            <SidebarItem 
+              icon={Bug} 
+              label="Debug" 
+              href="/debug" 
+              active={location === "/debug"} 
+            />
           </ul>
         </nav>
         
@@ -162,6 +170,13 @@ export const SidebarLayout: React.FC<{ children: React.ReactNode }> = ({ childre
                     label="Settings" 
                     href="/settings" 
                     active={location === "/settings"} 
+                  />
+                  <Separator className="my-2 bg-gray-800" />
+                  <SidebarItem 
+                    icon={Bug} 
+                    label="Debug" 
+                    href="/debug" 
+                    active={location === "/debug"} 
                   />
                 </ul>
               </nav>

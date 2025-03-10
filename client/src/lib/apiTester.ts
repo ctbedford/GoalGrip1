@@ -57,21 +57,23 @@ export async function testEndpoint(
   try {
     logger.info(FeatureArea.API, `Testing API endpoint: ${method} ${url}`);
     
-    const response = await apiRequest({
-      url,
+    const response = await apiRequest(
       method,
-      data,
-    });
+      url,
+      data
+    );
     
     const endTime = performance.now();
     const duration = endTime - startTime;
+    
+    const responseData = await response.json().catch(() => null);
     
     result = {
       endpoint: url,
       method,
       status: response.status,
       success: response.status >= 200 && response.status < 300,
-      data: response.data,
+      data: responseData,
       duration,
       timestamp: new Date(),
     };
