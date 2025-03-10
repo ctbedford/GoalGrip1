@@ -38,6 +38,10 @@ import { createContext } from '@/lib/enhancedLogger';
  * A specialized component that allows inspection of the debug infrastructure itself
  * through direct toolchain calls. This provides a meta-debugging capability where
  * the debug tools can be used to debug themselves.
+ * 
+ * This component also provides information about the API endpoints that can be used
+ * to access the debug infrastructure via HTTP requests, enabling integration with
+ * external tools and curl commands.
  */
 export function DebugToolchainInspector() {
   const [activeTab, setActiveTab] = useState('query');
@@ -226,7 +230,7 @@ export function DebugToolchainInspector() {
       </CardHeader>
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid grid-cols-3 w-full max-w-md">
+          <TabsList className="grid grid-cols-4 w-full max-w-md">
             <TabsTrigger value="query">
               <Code className="mr-2 h-4 w-4" />
               Query Editor
@@ -238,6 +242,10 @@ export function DebugToolchainInspector() {
             <TabsTrigger value="docs">
               <FileJson className="mr-2 h-4 w-4" />
               Documentation
+            </TabsTrigger>
+            <TabsTrigger value="api">
+              <Wrench className="mr-2 h-4 w-4" />
+              API Access
             </TabsTrigger>
           </TabsList>
           
@@ -385,6 +393,115 @@ export function DebugToolchainInspector() {
                     </div>
                   </div>
                 </ScrollArea>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* API Access Tab */}
+          <TabsContent value="api" className="space-y-4">
+            <Card className="border-slate-200">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Debug API Access</CardTitle>
+                <CardDescription>
+                  Access the debug toolchain directly via HTTP endpoints
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-5">
+                  <div className="space-y-2">
+                    <h3 className="font-medium text-sm flex items-center">
+                      <Wrench className="h-4 w-4 mr-2 text-slate-500" />
+                      Available API Endpoints
+                    </h3>
+                    <div className="bg-slate-50 p-3 rounded-md border text-sm">
+                      <ul className="space-y-3">
+                        <li>
+                          <div className="flex items-start">
+                            <Badge variant="outline" className="mr-2 uppercase font-mono text-xs">GET</Badge>
+                            <div>
+                              <div className="font-semibold font-mono">/api/debug</div>
+                              <p className="text-slate-600 mt-1">Get a list of all available debug functions</p>
+                            </div>
+                          </div>
+                        </li>
+                        <li>
+                          <div className="flex items-start">
+                            <Badge variant="outline" className="mr-2 uppercase font-mono text-xs">GET</Badge>
+                            <div>
+                              <div className="font-semibold font-mono">/api/debug/:functionName</div>
+                              <p className="text-slate-600 mt-1">Execute a specific debug function</p>
+                            </div>
+                          </div>
+                        </li>
+                        <li>
+                          <div className="flex items-start">
+                            <Badge variant="outline" className="mr-2 uppercase font-mono text-xs">POST</Badge>
+                            <div>
+                              <div className="font-semibold font-mono">/api/debug/query</div>
+                              <p className="text-slate-600 mt-1">Execute a custom debug query</p>
+                            </div>
+                          </div>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <h3 className="font-medium text-sm flex items-center">
+                      <Code className="h-4 w-4 mr-2 text-slate-500" />
+                      Curl Examples
+                    </h3>
+                    <div className="bg-slate-800 text-slate-100 p-3 rounded-md text-sm font-mono overflow-auto">
+                      <div className="text-green-400 mb-1"># Get available debug functions</div>
+                      <div className="mb-3">curl -X GET http://localhost:5000/api/debug</div>
+                      
+                      <div className="text-green-400 mb-1"># Execute a specific debug function</div>
+                      <div className="mb-3">curl -X GET http://localhost:5000/api/debug/getFeatureVerificationStatus</div>
+                      
+                      <div className="text-green-400 mb-1"># Execute a custom debug query</div>
+                      <div>curl -X POST http://localhost:5000/api/debug/query -H "Content-Type: application/json" -d {"'{ \"query\": \"getFeatureVerificationStatus()\" }'"}</div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <h3 className="font-medium text-sm flex items-center">
+                      <FileJson className="h-4 w-4 mr-2 text-slate-500" />
+                      Response Format
+                    </h3>
+                    <div className="bg-slate-50 p-3 rounded-md border text-sm">
+                      <p className="mb-2">The Debug API returns consistent JSON responses with the following structure:</p>
+                      <pre className="bg-slate-100 p-2 rounded text-xs overflow-auto">
+                        {JSON.stringify({
+                          message: "Debug query processed",
+                          query: {
+                            text: "getFeatureVerificationStatus()",
+                            type: "featureStatus",
+                            processed: true
+                          },
+                          result: {
+                            status: "success",
+                            timestamp: "2025-03-10T10:42:12.000Z",
+                            data: {}
+                          }
+                        }, null, 2)}
+                      </pre>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-blue-50 border border-blue-200 p-3 rounded-md text-blue-800 text-sm">
+                    <div className="flex items-start">
+                      <AlertCircle className="h-5 w-5 mr-2 text-blue-600 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-medium">Integration Note</p>
+                        <p className="mt-1">
+                          For security reasons, the server-side API endpoints don't directly execute the queries.
+                          Instead, they provide a bridge for external tools to communicate with the debug infrastructure.
+                          To execute actual queries, use this Debug Toolchain Inspector UI.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
