@@ -69,6 +69,9 @@ interface FeatureVerification {
 // Store feature verification status
 const featureVerification: FeatureVerification = {};
 
+// Placeholder for initialization
+let initialized = false;
+
 // Performance metrics tracking
 interface PerformanceMetric {
   operation: string;
@@ -139,6 +142,11 @@ function logInternal(
   
   // Persist log to debug storage
   debugStorage.addLogEntry(level, area, message, data);
+  
+  // Save debug storage periodically (every 10 logs or on error/warning)
+  if (level >= LogLevel.WARN || Math.random() < 0.1) {
+    debugStorage.saveDebugStorage();
+  }
 }
 
 /**
@@ -344,6 +352,13 @@ registerFeature('settings-profile', true, false);
 registerFeature('settings-appearance', true, false);
 registerFeature('settings-notifications', true, false);
 registerFeature('settings-security', true, false);
+
+// Initialize debug storage system
+if (!initialized) {
+  debugStorage.initDebugStorage();
+  initialized = true;
+  logInternal(LogLevel.INFO, FeatureArea.UI, 'Logger initialized');
+}
 
 // Export a default logger instance
 export default {

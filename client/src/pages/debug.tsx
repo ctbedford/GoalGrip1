@@ -8,6 +8,7 @@ import { Terminal, CheckCircle2, AlertCircle, Braces, Database } from 'lucide-re
 import { FeatureTester } from '@/lib/featureTester';
 import logger, { FeatureArea, LogLevel } from '@/lib/logger';
 import apiTester from '@/lib/apiTester';
+import * as debugStorage from '@/lib/debugStorage';
 
 // Debug logs
 interface LogEntry {
