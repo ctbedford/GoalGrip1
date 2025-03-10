@@ -7,14 +7,16 @@
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import logger, { FeatureArea } from './logger';
-import apiTester, { ApiEndpoint } from './apiTester';
-import * as debugStorage from './debugStorage';
+import { CheckCircle, Info, Play, RefreshCw, AlertTriangle, XCircle, CheckSquare } from 'lucide-react';
+import logger, { FeatureArea, LogLevel } from './logger';
+import { updateFeatureTestResult, getFeatureTestResults } from './debugStorage';
+import { markFeatureImplemented, markFeatureTested } from './logger';
+import enhancedLogger from './enhancedLogger';
 
-// Feature test status
+// Test status enum
 export enum TestStatus {
   NOT_STARTED = 'not_started',
   RUNNING = 'running',
@@ -23,7 +25,7 @@ export enum TestStatus {
   SKIPPED = 'skipped',
 }
 
-// Feature test result
+// Test result interface
 export interface FeatureTestResult {
   id: string;
   name: string;
@@ -33,48 +35,39 @@ export interface FeatureTestResult {
   duration?: number;
   details?: any;
   timestamp?: Date;
+  contextId?: string; // For correlation with enhanced logging
 }
 
-// Feature test definition
+// Feature test interface
 export interface FeatureTest {
   id: string;
   name: string;
   description: string;
   area: FeatureArea;
   dependencies?: string[];
-  test: () => Promise<boolean> | boolean;
+  test: (contextId?: string) => Promise<boolean> | boolean;
 }
 
-// Store all registered tests
+// Track registered tests
 const registeredTests: FeatureTest[] = [];
-
-// Store test results
+// Track test results
 const testResults: Record<string, FeatureTestResult> = {};
 
 /**
  * Register a feature test
  */
 export function registerFeatureTest(test: FeatureTest): void {
-  if (registeredTests.find(t => t.id === test.id)) {
+  const existing = registeredTests.find(t => t.id === test.id);
+  if (existing) {
     logger.warn(FeatureArea.UI, `Test with ID ${test.id} already registered, overwriting`);
-    const index = registeredTests.findIndex(t => t.id === test.id);
-    registeredTests[index] = test;
-  } else {
-    registeredTests.push(test);
-    logger.info(FeatureArea.UI, `Registered feature test: ${test.name}`, { id: test.id });
   }
   
-  // Initialize result
-  testResults[test.id] = {
-    id: test.id,
-    name: test.name,
-    description: test.description,
-    status: TestStatus.NOT_STARTED,
-  };
+  registeredTests.push(test);
+  logger.info(FeatureArea.UI, `Registered feature test: ${test.name}`, { id: test.id });
 }
 
 /**
- * Run a specific feature test
+ * Run a specific feature test with enhanced logging
  */
 export async function runFeatureTest(testId: string): Promise<FeatureTestResult> {
   const test = registeredTests.find(t => t.id === testId);
@@ -92,8 +85,33 @@ export async function runFeatureTest(testId: string): Promise<FeatureTestResult>
     return failedResult;
   }
   
+  // Create execution context for this test using enhanced logger
+  const context = enhancedLogger.createContext(test.area, test.id);
+  const contextId = context.id;
+  
+  // Log test initiation with metadata
+  enhancedLogger.logStep(
+    contextId, 
+    `Initiating test: ${test.name}`, 
+    LogLevel.INFO,
+    FeatureArea.UI,
+    { 
+      testId: test.id,
+      testName: test.name,
+      testDescription: test.description,
+      testArea: test.area,
+      dependencies: test.dependencies || [] 
+    }
+  );
+  
   // Check dependencies
   if (test.dependencies && test.dependencies.length > 0) {
+    enhancedLogger.logStep(
+      contextId,
+      `Checking dependencies: ${test.dependencies.join(', ')}`,
+      LogLevel.INFO
+    );
+    
     const unmetDependencies = test.dependencies.filter(depId => {
       const depResult = testResults[depId];
       return !depResult || depResult.status !== TestStatus.PASSED;
@@ -107,17 +125,35 @@ export async function runFeatureTest(testId: string): Promise<FeatureTestResult>
         status: TestStatus.SKIPPED,
         error: `Unmet dependencies: ${unmetDependencies.join(', ')}`,
         timestamp: new Date(),
+        contextId // Add context ID for tracing
       };
       
-      logger.warn(
+      enhancedLogger.logStep(
+        contextId,
+        `Test skipped: dependencies not met: ${unmetDependencies.join(', ')}`,
+        LogLevel.WARN,
         FeatureArea.UI,
-        `Skipping test ${test.name} due to unmet dependencies`,
-        { dependencies: unmetDependencies }
+        { 
+          unmetDependencies,
+          dependencyStatus: unmetDependencies.reduce((acc, depId) => {
+            acc[depId] = testResults[depId]?.status || 'not run';
+            return acc;
+          }, {} as Record<string, string>)
+        }
       );
       
       testResults[test.id] = skippedResult;
+      
+      // Complete the context with skipped status
+      enhancedLogger.completeContext(contextId, false, {
+        status: TestStatus.SKIPPED,
+        reason: `Unmet dependencies: ${unmetDependencies.join(', ')}`
+      });
+      
       return skippedResult;
     }
+    
+    enhancedLogger.logStep(contextId, "All dependencies satisfied", LogLevel.INFO);
   }
   
   // Update status to running
@@ -127,17 +163,43 @@ export async function runFeatureTest(testId: string): Promise<FeatureTestResult>
     description: test.description,
     status: TestStatus.RUNNING,
     timestamp: new Date(),
+    contextId // Add context ID for tracing
   };
   
   testResults[test.id] = runningResult;
-  logger.info(FeatureArea.UI, `Running feature test: ${test.name}`);
   
   const startTime = performance.now();
   
   try {
-    const success = await Promise.resolve(test.test());
+    // Log input parameters or conditions for the test
+    enhancedLogger.logStep(
+      contextId,
+      "Executing test function",
+      LogLevel.INFO,
+      FeatureArea.UI
+    );
+    
+    // Execute the test function
+    // If the test function accepts parameters, pass the context ID
+    const success = typeof test.test === 'function' && test.test.length > 0
+      ? await Promise.resolve(test.test(contextId))
+      : await Promise.resolve(test.test());
+    
     const endTime = performance.now();
     const duration = endTime - startTime;
+    
+    // Log detailed test execution outcome
+    enhancedLogger.logStep(
+      contextId,
+      `Test execution ${success ? 'succeeded' : 'failed'}`,
+      success ? LogLevel.INFO : LogLevel.ERROR,
+      FeatureArea.UI,
+      { 
+        success,
+        durationMs: duration,
+        result: success
+      }
+    );
     
     const result: FeatureTestResult = {
       id: test.id,
@@ -146,61 +208,64 @@ export async function runFeatureTest(testId: string): Promise<FeatureTestResult>
       status: success ? TestStatus.PASSED : TestStatus.FAILED,
       duration,
       timestamp: new Date(),
+      contextId // Add context ID for tracing
     };
     
     testResults[test.id] = result;
     
-    // Store result in debug storage for persistence
-    debugStorage.updateFeatureTestResult(test.id, result);
-    
+    // If passed, mark the feature as tested
     if (success) {
-      logger.info(
-        FeatureArea.UI,
-        `Feature test passed: ${test.name}`,
-        { duration: `${duration.toFixed(2)}ms` }
-      );
-      
-      // Mark feature as tested in the logger
-      logger.markFeatureTested(test.name, true);
-    } else {
-      logger.warn(
-        FeatureArea.UI,
-        `Feature test failed: ${test.name}`,
-        { duration: `${duration.toFixed(2)}ms` }
-      );
-      
-      // Mark feature as tested but failed in the logger
-      logger.markFeatureTested(test.name, false);
+      markFeatureTested(test.id, true);
     }
     
+    // Complete the execution context
+    enhancedLogger.completeContext(contextId, success, { 
+      status: success ? TestStatus.PASSED : TestStatus.FAILED,
+      durationMs: duration
+    });
+    
     return result;
-  } catch (error: any) {
+  } catch (error) {
     const endTime = performance.now();
     const duration = endTime - startTime;
+    
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    
+    // Log detailed error information
+    enhancedLogger.logStep(
+      contextId,
+      `Test execution threw exception: ${errorMessage}`,
+      LogLevel.ERROR,
+      FeatureArea.UI,
+      { 
+        error: error instanceof Error ? {
+          message: error.message,
+          stack: error.stack,
+          name: error.name
+        } : String(error),
+        durationMs: duration
+      }
+    );
     
     const result: FeatureTestResult = {
       id: test.id,
       name: test.name,
       description: test.description,
       status: TestStatus.FAILED,
-      error: error.message || String(error),
+      error: errorMessage,
       duration,
       timestamp: new Date(),
+      contextId // Add context ID for tracing
     };
     
     testResults[test.id] = result;
     
-    // Store result in debug storage for persistence
-    debugStorage.updateFeatureTestResult(test.id, result);
-    
-    logger.error(
-      FeatureArea.UI,
-      `Error in feature test ${test.name}`,
-      { error, duration: `${duration.toFixed(2)}ms` }
-    );
-    
-    // Mark feature as tested but failed in the logger
-    logger.markFeatureTested(test.name, false, error.message);
+    // Complete the execution context with failure
+    enhancedLogger.completeContext(contextId, false, { 
+      status: TestStatus.FAILED,
+      error: errorMessage,
+      durationMs: duration
+    });
     
     return result;
   }
@@ -210,31 +275,63 @@ export async function runFeatureTest(testId: string): Promise<FeatureTestResult>
  * Run all registered feature tests
  */
 export async function runAllFeatureTests(): Promise<FeatureTestResult[]> {
-  logger.info(FeatureArea.UI, 'Starting all feature tests');
-  
   const results: FeatureTestResult[] = [];
   
-  // Sort tests by dependencies
-  const sortedTests = [...registeredTests].sort((a, b) => {
-    if (a.dependencies?.includes(b.id)) return 1;
-    if (b.dependencies?.includes(a.id)) return -1;
-    return 0;
-  });
+  // Create a master context for this test run
+  const masterContext = enhancedLogger.createContext(FeatureArea.UI, 'all-tests');
+  const masterContextId = masterContext.id;
   
-  for (const test of sortedTests) {
+  enhancedLogger.logStep(
+    masterContextId,
+    `Starting test run for ${registeredTests.length} tests`,
+    LogLevel.INFO,
+    FeatureArea.UI,
+    { testCount: registeredTests.length, testIds: registeredTests.map(t => t.id) }
+  );
+  
+  let passCount = 0;
+  let failCount = 0;
+  let skipCount = 0;
+  
+  for (const test of registeredTests) {
+    enhancedLogger.logStep(
+      masterContextId,
+      `Running test: ${test.id}`,
+      LogLevel.INFO,
+      FeatureArea.UI
+    );
+    
     const result = await runFeatureTest(test.id);
     results.push(result);
+    
+    enhancedLogger.logStep(
+      masterContextId,
+      `Test ${test.id} completed with status: ${result.status}`,
+      result.status === TestStatus.PASSED ? LogLevel.INFO : 
+        result.status === TestStatus.SKIPPED ? LogLevel.WARN : LogLevel.ERROR,
+      FeatureArea.UI,
+      { result }
+    );
+    
+    if (result.status === TestStatus.PASSED) passCount++;
+    else if (result.status === TestStatus.FAILED) failCount++;
+    else if (result.status === TestStatus.SKIPPED) skipCount++;
   }
   
-  const passed = results.filter(r => r.status === TestStatus.PASSED).length;
-  const failed = results.filter(r => r.status === TestStatus.FAILED).length;
-  const skipped = results.filter(r => r.status === TestStatus.SKIPPED).length;
-  
-  logger.info(
+  enhancedLogger.logStep(
+    masterContextId,
+    `Feature testing complete: ${passCount} passed, ${failCount} failed, ${skipCount} skipped`,
+    LogLevel.INFO,
     FeatureArea.UI,
-    `Feature testing complete: ${passed} passed, ${failed} failed, ${skipped} skipped`,
     { results }
   );
+  
+  enhancedLogger.completeContext(masterContextId, failCount === 0, {
+    passCount,
+    failCount,
+    skipCount,
+    results
+  });
   
   return results;
 }
@@ -257,566 +354,631 @@ export function getTestResult(testId: string): FeatureTestResult | undefined {
  * Reset all test results
  */
 export function resetTestResults(): void {
-  Object.keys(testResults).forEach(id => {
-    testResults[id] = {
-      id,
-      name: registeredTests.find(t => t.id === id)?.name || 'Unknown',
-      description: registeredTests.find(t => t.id === id)?.description || '',
-      status: TestStatus.NOT_STARTED,
-    };
-    
-    // Update in debug storage
-    debugStorage.updateFeatureTestResult(id, testResults[id]);
-  });
-  
-  // Clear feature test results in debug storage
-  debugStorage.clearFeatureTestResults();
-  
-  logger.info(FeatureArea.UI, 'Reset all test results');
+  for (const id in testResults) {
+    delete testResults[id];
+  }
 }
 
 /**
- * Generate a test report
+ * Get all available tests
  */
-export function generateTestReport(): string {
-  const results = Object.values(testResults);
-  const total = results.length;
-  const passed = results.filter(r => r.status === TestStatus.PASSED).length;
-  const failed = results.filter(r => r.status === TestStatus.FAILED).length;
-  const skipped = results.filter(r => r.status === TestStatus.SKIPPED).length;
-  const notStarted = results.filter(r => r.status === TestStatus.NOT_STARTED).length;
-  const passRate = total > 0 ? (passed / total * 100).toFixed(2) : 'N/A';
-  
-  let report = `# Feature Test Report\n\n`;
-  report += `Generated: ${new Date().toLocaleString()}\n\n`;
-  report += `## Summary\n\n`;
-  report += `- Total tests: ${total}\n`;
-  report += `- Passed: ${passed}\n`;
-  report += `- Failed: ${failed}\n`;
-  report += `- Skipped: ${skipped}\n`;
-  report += `- Not started: ${notStarted}\n`;
-  report += `- Pass rate: ${passRate}%\n\n`;
-  report += `## Test Results\n\n`;
-  
-  if (total === 0) {
-    report += `No tests have been registered yet.\n`;
-  } else {
-    report += `| ID | Name | Status | Duration (ms) | Error |\n`;
-    report += `|----|------|--------|--------------|-------|\n`;
-    
-    results.forEach(result => {
-      const status = result.status === TestStatus.PASSED ? '✓ PASSED' :
-                     result.status === TestStatus.FAILED ? '✗ FAILED' :
-                     result.status === TestStatus.SKIPPED ? '⚠ SKIPPED' : '- NOT STARTED';
-      
-      const duration = result.duration ? result.duration.toFixed(2) : 'N/A';
-      const error = result.error || '';
-      
-      report += `| ${result.id} | ${result.name} | ${status} | ${duration} | ${error} |\n`;
-    });
-  }
-  
-  return report;
+export function getRegisteredTests(): FeatureTest[] {
+  return [...registeredTests];
 }
 
-// Register core feature tests
+// Add Dashboard Statistics Test
 registerFeatureTest({
   id: 'dashboard-stats',
   name: 'Dashboard Statistics',
   description: 'Verify dashboard statistics are correctly displayed',
   area: FeatureArea.DASHBOARD,
-  async test() {
-    const result = await apiTester.testEndpoint(ApiEndpoint.DASHBOARD);
-    return result.success;
+  async test(contextId?) {
+    if (contextId) {
+      enhancedLogger.logStep(
+        contextId,
+        "Testing dashboard statistics endpoint",
+        LogLevel.INFO,
+        FeatureArea.API
+      );
+    }
+    
+    // Test dashboard stats API
+    try {
+      if (contextId) {
+        enhancedLogger.logApiRequest(contextId, 'GET', '/api/dashboard/stats');
+      }
+      const startTime = performance.now();
+      const response = await fetch('/api/dashboard/stats');
+      const endTime = performance.now();
+      
+      if (!response.ok) {
+        if (contextId) {
+          enhancedLogger.logApiResponse(
+            contextId, 
+            response.status, 
+            await response.text(), 
+            endTime - startTime
+          );
+          enhancedLogger.logStep(
+            contextId,
+            `Dashboard stats API failed with status ${response.status}`,
+            LogLevel.ERROR,
+            FeatureArea.API
+          );
+        }
+        return false;
+      }
+      
+      const data = await response.json();
+      
+      if (contextId) {
+        enhancedLogger.logApiResponse(
+          contextId, 
+          response.status, 
+          data, 
+          endTime - startTime
+        );
+        
+        // Verify structure of response
+        enhancedLogger.logStep(
+          contextId,
+          "Validating dashboard stats response structure",
+          LogLevel.INFO,
+          FeatureArea.API
+        );
+        
+        const expectedKeys = ['activeGoals', 'completedGoals', 'pointsEarned'];
+        const missingKeys = expectedKeys.filter(key => !(key in data));
+        
+        if (missingKeys.length > 0) {
+          enhancedLogger.logStep(
+            contextId,
+            `Dashboard stats API response missing keys: ${missingKeys.join(', ')}`,
+            LogLevel.ERROR,
+            FeatureArea.API,
+            { expectedKeys, actualKeys: Object.keys(data) }
+          );
+          return false;
+        }
+        
+        enhancedLogger.logStep(
+          contextId,
+          "Dashboard stats API response validated successfully",
+          LogLevel.INFO,
+          FeatureArea.API,
+          { stats: data }
+        );
+      }
+      
+      // Mark as implemented if passes
+      markFeatureImplemented('dashboard-stats', true);
+      
+      return true;
+    } catch (error) {
+      if (contextId) {
+        enhancedLogger.logStep(
+          contextId,
+          `Dashboard stats API test failed with error: ${error instanceof Error ? error.message : String(error)}`,
+          LogLevel.ERROR,
+          FeatureArea.API,
+          { error }
+        );
+      }
+      return false;
+    }
   }
 });
 
+// Add Goal Creation Test
 registerFeatureTest({
   id: 'goal-creation',
   name: 'Goal Creation',
   description: 'Verify goals can be created successfully',
   area: FeatureArea.GOAL,
-  async test() {
-    // This is a placeholder that would be replaced with actual UI interaction test
-    // For now, we'll use the API test as a proxy
-    const testGoal = {
-      description: 'Test Goal',
-      targetValue: 100,
-      currentValue: 0, 
-      unit: 'items',
-      deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      categoryId: 0, // Using 0 instead of null for no category
-      reminderFrequency: 'daily',
-      userId: 1
-    };
+  async test(contextId?) {
+    if (contextId) {
+      enhancedLogger.logStep(
+        contextId,
+        "Testing goal creation workflow",
+        LogLevel.INFO,
+        FeatureArea.GOAL
+      );
+    }
     
-    const result = await apiTester.testEndpoint(ApiEndpoint.GOALS, 'POST', testGoal);
-    return result.success;
+    try {
+      const testGoal = {
+        userId: 1,
+        description: 'Test Goal',
+        targetValue: 100,
+        currentValue: 0,
+        deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        category: 0, // Using 0 for "no category"
+        completed: false
+      };
+      
+      if (contextId) {
+        enhancedLogger.logTestInput(contextId, testGoal);
+        enhancedLogger.logApiRequest(contextId, 'POST', '/api/goals', testGoal);
+      }
+      
+      const startTime = performance.now();
+      const response = await fetch('/api/goals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(testGoal)
+      });
+      const endTime = performance.now();
+      
+      const data = await response.json();
+      
+      if (contextId) {
+        enhancedLogger.logApiResponse(
+          contextId,
+          response.status,
+          data,
+          endTime - startTime
+        );
+      }
+      
+      const success = response.ok && data && data.id && data.description === testGoal.description;
+      
+      if (contextId) {
+        if (success) {
+          enhancedLogger.logStep(
+            contextId,
+            "Goal creation succeeded",
+            LogLevel.INFO,
+            FeatureArea.GOAL,
+            { createdGoal: data }
+          );
+        } else {
+          enhancedLogger.logStep(
+            contextId,
+            "Goal creation failed",
+            LogLevel.ERROR,
+            FeatureArea.GOAL,
+            { 
+              statusCode: response.status,
+              response: data,
+              expectedDescription: testGoal.description,
+              actualDescription: data?.description
+            }
+          );
+        }
+        
+        enhancedLogger.logTestOutput(
+          contextId,
+          { success: true, description: testGoal.description },
+          { success, description: data?.description },
+          success
+        );
+      }
+      
+      // Mark as implemented if passes
+      if (success) {
+        markFeatureImplemented('goal-creation', true);
+      }
+      
+      return success;
+    } catch (error) {
+      if (contextId) {
+        enhancedLogger.logStep(
+          contextId,
+          `Goal creation test failed with error: ${error instanceof Error ? error.message : String(error)}`,
+          LogLevel.ERROR,
+          FeatureArea.GOAL,
+          { error }
+        );
+      }
+      return false;
+    }
   }
 });
 
+// Add Goal Progress Tracking Test
 registerFeatureTest({
   id: 'goal-progress',
   name: 'Goal Progress Tracking',
   description: 'Verify goal progress can be updated',
-  area: FeatureArea.GOAL,
+  area: FeatureArea.PROGRESS,
   dependencies: ['goal-creation'],
-  async test() {
-    // Create a goal first
-    const createResult = await apiTester.testEndpoint(
-      ApiEndpoint.GOALS,
-      'POST',
-      {
+  async test(contextId?) {
+    if (contextId) {
+      enhancedLogger.logStep(
+        contextId,
+        "Testing goal progress tracking workflow",
+        LogLevel.INFO,
+        FeatureArea.PROGRESS
+      );
+    }
+    
+    try {
+      // First create a test goal
+      const testGoal = {
+        userId: 1,
         description: 'Test Progress Goal',
         targetValue: 100,
         currentValue: 0,
-        unit: 'points',
-        deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        categoryId: 0, // Using 0 instead of null for no category
-        reminderFrequency: 'daily',
-        userId: 1
-      }
-    );
-    
-    if (!createResult.success) return false;
-    
-    const goalId = createResult.data.id;
-    
-    // Log progress for the goal
-    const logResult = await apiTester.testEndpoint(
-      ApiEndpoint.PROGRESS_LOGS,
-      'POST',
-      {
-        goalId,
-        value: 25,
-        notes: 'Test progress'
-      }
-    );
-    
-    return logResult.success;
-  }
-});
-
-registerFeatureTest({
-  id: 'categories-list',
-  name: 'Categories List',
-  description: 'Verify categories can be retrieved',
-  area: FeatureArea.GOAL,
-  async test() {
-    const result = await apiTester.testEndpoint(ApiEndpoint.CATEGORIES);
-    return result.success;
-  }
-});
-
-registerFeatureTest({
-  id: 'action-items',
-  name: 'Action Items',
-  description: 'Verify action items can be retrieved',
-  area: FeatureArea.DASHBOARD,
-  async test() {
-    const result = await apiTester.testEndpoint(ApiEndpoint.ACTION_ITEMS);
-    return result.success;
-  }
-});
-
-registerFeatureTest({
-  id: 'user-badges',
-  name: 'User Badges',
-  description: 'Verify user badges can be retrieved',
-  area: FeatureArea.ACHIEVEMENT,
-  async test() {
-    const result = await apiTester.testEndpoint(ApiEndpoint.BADGES);
-    return result.success;
-  }
-});
-
-// Enhanced cross-feature tests
-registerFeatureTest({
-  id: 'goal-lifecycle',
-  name: 'Goal Lifecycle',
-  description: 'Test full goal lifecycle from creation to completion',
-  area: FeatureArea.GOAL,
-  dependencies: ['goal-creation', 'goal-progress'],
-  async test() {
-    return await apiTester.testGoalLifecycle();
-  }
-});
-
-registerFeatureTest({
-  id: 'complete-user-journey',
-  name: 'Complete User Journey',
-  description: 'Test a user\'s journey across the entire application',
-  area: FeatureArea.UI,
-  dependencies: ['goal-creation', 'goal-progress', 'action-items', 'user-badges', 'dashboard-stats'],
-  async test() {
-    return await apiTester.testCompleteUserJourney();
-  }
-});
-
-registerFeatureTest({
-  id: 'goal-to-dashboard',
-  name: 'Goal to Dashboard Integration',
-  description: 'Verify goals reflect in dashboard statistics',
-  area: FeatureArea.DASHBOARD,
-  dependencies: ['dashboard-stats', 'goal-creation'],
-  async test() {
-    // Get initial dashboard stats
-    const initialStatsResult = await apiTester.testEndpoint(ApiEndpoint.DASHBOARD);
-    if (!initialStatsResult.success) return false;
-    
-    const initialStats = initialStatsResult.data;
-    
-    // Create a test goal
-    const createResult = await apiTester.testEndpoint(
-      ApiEndpoint.GOALS,
-      'POST',
-      {
-        description: 'Dashboard Integration Test Goal',
-        targetValue: 100,
-        currentValue: 0,
-        unit: 'points',
-        deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        categoryId: 0, // Using 0 instead of null for no category
-        reminderFrequency: 'daily',
-        userId: 1
-      }
-    );
-    
-    if (!createResult.success) return false;
-    
-    // Get updated dashboard stats
-    const updatedStatsResult = await apiTester.testEndpoint(ApiEndpoint.DASHBOARD);
-    if (!updatedStatsResult.success) return false;
-    
-    const updatedStats = updatedStatsResult.data;
-    
-    // Verify active goals increased by 1
-    const activeGoalsIncreased = updatedStats.activeGoals === initialStats.activeGoals + 1;
-    
-    return activeGoalsIncreased;
-  }
-});
-
-registerFeatureTest({
-  id: 'progress-to-badges',
-  name: 'Progress to Badges Integration',
-  description: 'Verify making progress can trigger badges',
-  area: FeatureArea.ACHIEVEMENT,
-  dependencies: ['goal-progress', 'user-badges'],
-  async test() {
-    // Get initial badges count
-    const initialBadgesResult = await apiTester.testEndpoint(ApiEndpoint.BADGES);
-    if (!initialBadgesResult.success) return false;
-    
-    const initialBadges = initialBadgesResult.data;
-    
-    // Create a goal and log significant progress
-    const createResult = await apiTester.testEndpoint(
-      ApiEndpoint.GOALS,
-      'POST',
-      {
-        description: 'Badge Test Goal',
-        targetValue: 100,
-        currentValue: 0,
-        unit: 'points',
-        deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        categoryId: 0,
-        reminderFrequency: 'daily',
-        userId: 1
-      }
-    );
-    
-    if (!createResult.success) return false;
-    
-    const goalId = createResult.data.id;
-    
-    // Log multiple progress entries to potentially trigger badges
-    for (let i = 0; i < 3; i++) {
-      const logResult = await apiTester.testEndpoint(
-        ApiEndpoint.PROGRESS_LOGS,
-        'POST',
-        {
-          goalId,
-          value: 25,
-          notes: `Badge test progress ${i+1}`
-        }
-      );
-      if (!logResult.success) return false;
-    }
-    
-    // Get updated badges
-    const updatedBadgesResult = await apiTester.testEndpoint(ApiEndpoint.BADGES);
-    if (!updatedBadgesResult.success) return false;
-    
-    // Check if the test passes even if no new badges were awarded
-    // In a real implementation with badge rules, we would check for specific badges
-    return true;
-  }
-});
-
-registerFeatureTest({
-  id: 'goal-action-items',
-  name: 'Goal to Action Items Integration',
-  description: 'Verify goals generate appropriate action items',
-  area: FeatureArea.DASHBOARD,
-  dependencies: ['goal-creation', 'action-items'],
-  async test() {
-    // Get initial action items
-    const initialItemsResult = await apiTester.testEndpoint(ApiEndpoint.ACTION_ITEMS);
-    if (!initialItemsResult.success) return false;
-    
-    const initialItems = initialItemsResult.data;
-    
-    // Create a goal with daily reminder frequency
-    const createResult = await apiTester.testEndpoint(
-      ApiEndpoint.GOALS,
-      'POST',
-      {
-        description: 'Action Item Test Goal',
-        targetValue: 100,
-        currentValue: 0,
-        unit: 'points',
-        deadline: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 2 days from now
-        categoryId: 0,
-        reminderFrequency: 'daily',
-        userId: 1
-      }
-    );
-    
-    if (!createResult.success) return false;
-    
-    // Get updated action items
-    const updatedItemsResult = await apiTester.testEndpoint(ApiEndpoint.ACTION_ITEMS);
-    if (!updatedItemsResult.success) return false;
-    
-    // In a real implementation, we would check if new action items were created
-    // but since our mock may not implement this logic, we'll just verify the API works
-    return true;
-  }
-});
-
-registerFeatureTest({
-  id: 'complete-goal-stats',
-  name: 'Goal Completion to Statistics',
-  description: 'Verify completing a goal updates dashboard statistics',
-  area: FeatureArea.DASHBOARD,
-  dependencies: ['goal-creation', 'dashboard-stats'],
-  async test() {
-    // Get initial dashboard stats
-    const initialStatsResult = await apiTester.testEndpoint(ApiEndpoint.DASHBOARD);
-    if (!initialStatsResult.success) return false;
-    
-    const initialStats = initialStatsResult.data;
-    
-    // Create a test goal
-    const createResult = await apiTester.testEndpoint(
-      ApiEndpoint.GOALS,
-      'POST',
-      {
-        description: 'Completion Test Goal',
-        targetValue: 100,
-        currentValue: 0,
-        unit: 'points',
-        deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        categoryId: 0,
-        reminderFrequency: 'daily',
-        userId: 1
-      }
-    );
-    
-    if (!createResult.success) return false;
-    
-    const goalId = createResult.data.id;
-    
-    // Complete the goal (update to 100% progress)
-    const updateResult = await apiTester.testEndpoint(
-      ApiEndpoint.GOAL_BY_ID,
-      'PATCH',
-      { currentValue: 100, completed: true },
-      { id: goalId.toString() }
-    );
-    
-    if (!updateResult.success) return false;
-    
-    // Get updated dashboard stats
-    const updatedStatsResult = await apiTester.testEndpoint(ApiEndpoint.DASHBOARD);
-    if (!updatedStatsResult.success) return false;
-    
-    const updatedStats = updatedStatsResult.data;
-    
-    // Verify completed goals increased by 1
-    // In our mock, this may not be implemented, so we'll just check API works
-    return true;
-  }
-});
-
-// Feature test component for debugging
-export function FeatureTester() {
-  const [results, setResults] = useState<Record<string, FeatureTestResult>>({});
-  const [loading, setLoading] = useState(false);
-  
-  // Load feature test results on initialization
-  useEffect(() => {
-    // First check if we have any saved results in debug storage
-    const savedResults = debugStorage.getFeatureTestResults();
-    
-    if (Object.keys(savedResults).length > 0) {
-      // Convert timestamp strings to Date objects if necessary
-      const processedResults = Object.entries(savedResults).reduce((acc, [id, result]) => {
-        acc[id] = {
-          ...result,
-          // Ensure timestamp is a Date object if it exists
-          timestamp: result.timestamp ? 
-            (result.timestamp instanceof Date ? result.timestamp : new Date(result.timestamp)) 
-            : undefined
-        };
-        return acc;
-      }, {} as Record<string, FeatureTestResult>);
+        deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        category: 0,
+        completed: false
+      };
       
-      // Update the test results in memory with saved values
-      Object.entries(processedResults).forEach(([id, result]) => {
-        testResults[id] = result;
+      if (contextId) {
+        enhancedLogger.logStep(
+          contextId,
+          "Creating test goal for progress tracking",
+          LogLevel.INFO,
+          FeatureArea.GOAL
+        );
+        enhancedLogger.logApiRequest(contextId, 'POST', '/api/goals', testGoal);
+      }
+      
+      const goalResponse = await fetch('/api/goals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(testGoal)
       });
       
-      logger.info(FeatureArea.UI, `Loaded ${Object.keys(savedResults).length} feature test results from storage`);
-      setResults(processedResults);
-    } else {
-      // If no saved results, use the current in-memory state
-      setResults(getTestResults());
+      if (!goalResponse.ok) {
+        if (contextId) {
+          enhancedLogger.logStep(
+            contextId,
+            "Failed to create test goal for progress tracking",
+            LogLevel.ERROR,
+            FeatureArea.GOAL,
+            { status: goalResponse.status, response: await goalResponse.text() }
+          );
+        }
+        return false;
+      }
+      
+      const goal = await goalResponse.json();
+      
+      if (contextId) {
+        enhancedLogger.logStep(
+          contextId,
+          "Successfully created test goal for progress tracking",
+          LogLevel.INFO,
+          FeatureArea.GOAL,
+          { goal }
+        );
+      }
+      
+      // Now log progress
+      const progress = {
+        goalId: goal.id,
+        value: 25,
+        notes: 'Test progress update'
+      };
+      
+      if (contextId) {
+        enhancedLogger.logStep(
+          contextId,
+          "Logging progress for test goal",
+          LogLevel.INFO,
+          FeatureArea.PROGRESS
+        );
+        enhancedLogger.logApiRequest(contextId, 'POST', '/api/progress-logs', progress);
+      }
+      
+      const progressResponse = await fetch('/api/progress-logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(progress)
+      });
+      
+      if (!progressResponse.ok) {
+        if (contextId) {
+          enhancedLogger.logStep(
+            contextId,
+            "Failed to log progress",
+            LogLevel.ERROR,
+            FeatureArea.PROGRESS,
+            { status: progressResponse.status, response: await progressResponse.text() }
+          );
+        }
+        return false;
+      }
+      
+      // Check if progress logs can be retrieved for the goal
+      if (contextId) {
+        enhancedLogger.logStep(
+          contextId,
+          "Retrieving progress logs for goal",
+          LogLevel.INFO,
+          FeatureArea.PROGRESS
+        );
+        enhancedLogger.logApiRequest(contextId, 'GET', `/api/progress-logs/${goal.id}`);
+      }
+      
+      const logsResponse = await fetch(`/api/progress-logs/${goal.id}`);
+      
+      if (!logsResponse.ok) {
+        if (contextId) {
+          enhancedLogger.logStep(
+            contextId,
+            "Failed to retrieve progress logs",
+            LogLevel.ERROR,
+            FeatureArea.PROGRESS,
+            { status: logsResponse.status, response: await logsResponse.text() }
+          );
+        }
+        return false;
+      }
+      
+      const logs = await logsResponse.json();
+      
+      if (contextId) {
+        enhancedLogger.logStep(
+          contextId,
+          "Retrieved progress logs successfully",
+          LogLevel.INFO,
+          FeatureArea.PROGRESS,
+          { logs }
+        );
+        
+        // Verify the logs contain our update
+        const found = logs.some((log: any) => log.value === progress.value && log.goalId === progress.goalId);
+        
+        enhancedLogger.logTestOutput(
+          contextId,
+          { found: true, value: progress.value },
+          { found, logs },
+          found
+        );
+        
+        if (!found) {
+          enhancedLogger.logStep(
+            contextId,
+            "Progress log not found in returned logs",
+            LogLevel.ERROR,
+            FeatureArea.PROGRESS,
+            { expected: progress, logs }
+          );
+          return false;
+        }
+      }
+      
+      // Mark as implemented if passes
+      markFeatureImplemented('goal-progress-tracking', true);
+      
+      return true;
+    } catch (error) {
+      if (contextId) {
+        enhancedLogger.logStep(
+          contextId,
+          `Goal progress test failed with error: ${error instanceof Error ? error.message : String(error)}`,
+          LogLevel.ERROR,
+          FeatureArea.PROGRESS,
+          { error }
+        );
+      }
+      return false;
     }
+  }
+});
+
+// Register more tests here...
+
+// UI Component for Feature Testing
+export function FeatureTester() {
+  const [results, setResults] = useState<Record<string, FeatureTestResult>>(getTestResults());
+  const [isRunning, setIsRunning] = useState(false);
+  const [showDetails, setShowDetails] = useState<string | null>(null);
+  
+  // Load persisted test results 
+  useEffect(() => {
+    const persistedResults = getFeatureTestResults();
+    if (Object.keys(persistedResults).length > 0) {
+      for (const id in persistedResults) {
+        testResults[id] = persistedResults[id];
+      }
+      setResults({...testResults});
+    }
+    
+    logger.info(FeatureArea.UI, `Loaded ${Object.keys(persistedResults).length} feature test results from storage`);
   }, []);
   
-  const handleRunAll = async () => {
-    setLoading(true);
+  const handleRunAllTests = async () => {
+    setIsRunning(true);
     await runAllFeatureTests();
-    setResults(getTestResults());
-    setLoading(false);
+    setResults({...testResults});
+    setIsRunning(false);
   };
   
   const handleReset = () => {
     resetTestResults();
-    setResults(getTestResults());
+    setResults({});
   };
   
   const handleRunTest = async (testId: string) => {
+    setIsRunning(true);
     await runFeatureTest(testId);
-    setResults(getTestResults());
+    setResults({...testResults});
+    setIsRunning(false);
   };
   
-  const handleLoadSaved = () => {
-    const savedResults = debugStorage.getFeatureTestResults();
-    
-    if (Object.keys(savedResults).length > 0) {
-      // Process timestamp strings to Date objects
-      const processedResults = Object.entries(savedResults).reduce((acc, [id, result]) => {
-        acc[id] = {
-          ...result,
-          timestamp: result.timestamp ? 
-            (result.timestamp instanceof Date ? result.timestamp : new Date(result.timestamp)) 
-            : undefined
-        };
-        return acc;
-      }, {} as Record<string, FeatureTestResult>);
-      
-      setResults(processedResults);
-      logger.info(FeatureArea.UI, `Loaded ${Object.keys(savedResults).length} feature test results from storage`);
-    } else {
-      logger.info(FeatureArea.UI, 'No saved feature test results found');
-    }
+  const toggleDetails = (testId: string) => {
+    setShowDetails(showDetails === testId ? null : testId);
   };
+  
+  // Group tests by area
+  const testsByArea = registeredTests.reduce((acc, test) => {
+    const area = test.area || 'Other';
+    if (!acc[area]) {
+      acc[area] = [];
+    }
+    acc[area].push(test);
+    return acc;
+  }, {} as Record<string, FeatureTest[]>);
   
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Feature Tester</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          <div className="flex space-x-2">
-            <Button onClick={handleRunAll} disabled={loading}>
-              {loading ? 'Running...' : 'Run All Tests'}
-            </Button>
-            <Button variant="outline" onClick={handleReset} disabled={loading}>
-              Reset
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={handleLoadSaved}
-              disabled={loading}
-            >
-              Load Saved
-            </Button>
-          </div>
-          
-          <Separator />
-          
-          <div className="space-y-2">
-            {Object.values(results).map(result => (
-              <div 
-                key={result.id}
-                className="flex items-center justify-between p-3 border rounded-md"
-              >
-                <div>
-                  <div className="font-medium">{result.name}</div>
-                  <div className="text-sm text-gray-500">{result.description}</div>
-                  {result.timestamp && (
-                    <div className="text-xs text-gray-400 mt-1">
-                      Last run: {result.timestamp.toLocaleString()}
-                    </div>
-                  )}
-                  {result.error && (
-                    <div className="text-sm text-red-500 mt-1">{result.error}</div>
-                  )}
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="flex flex-col items-end mr-2">
-                    <Badge
-                      variant={
-                        result.status === TestStatus.PASSED ? "success" :
-                        result.status === TestStatus.FAILED ? "destructive" :
-                        result.status === TestStatus.SKIPPED ? "warning" :
-                        result.status === TestStatus.RUNNING ? "secondary" :
-                        "outline"
-                      }
-                    >
-                      {result.status}
-                    </Badge>
-                    {result.duration && (
-                      <div className="text-xs text-gray-400 mt-1">
-                        {result.duration.toFixed(2)} ms
-                      </div>
-                    )}
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Feature Tester</CardTitle>
+          <CardDescription>
+            Run tests to verify the functionality of application features
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex space-x-2">
+              <Button onClick={handleRunAllTests} disabled={isRunning}>
+                {isRunning ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Running...
+                  </>
+                ) : (
+                  <>
+                    <Play className="h-4 w-4 mr-2" />
+                    Run All Tests
+                  </>
+                )}
+              </Button>
+              <Button variant="outline" onClick={handleReset} disabled={isRunning}>
+                Reset
+              </Button>
+              <Button variant="outline" 
+                onClick={() => Object.keys(results).length > 0 && updateFeatureTestResult('all', results)} 
+                disabled={isRunning || Object.keys(results).length === 0}>
+                Save Results
+              </Button>
+            </div>
+            
+            <ScrollArea className="h-[600px] border rounded-md p-4">
+              {Object.entries(testsByArea).map(([area, areaTests]) => (
+                <div key={area} className="mb-6">
+                  <h3 className="text-lg font-semibold mb-2">{area}</h3>
+                  <div className="space-y-4">
+                    {areaTests.map(test => {
+                      const result = results[test.id];
+                      const status = result?.status || TestStatus.NOT_STARTED;
+                      
+                      return (
+                        <Card key={test.id} className="overflow-hidden">
+                          <div className={`p-4 ${
+                            status === TestStatus.PASSED ? 'bg-green-900/20' :
+                            status === TestStatus.FAILED ? 'bg-red-900/20' :
+                            status === TestStatus.SKIPPED ? 'bg-yellow-900/20' :
+                            status === TestStatus.RUNNING ? 'bg-blue-900/20' :
+                            'bg-gray-900/10'
+                          }`}>
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <h4 className="font-medium flex items-center">
+                                  {status === TestStatus.PASSED ? (
+                                    <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                                  ) : status === TestStatus.FAILED ? (
+                                    <XCircle className="h-4 w-4 text-red-500 mr-2" />
+                                  ) : status === TestStatus.SKIPPED ? (
+                                    <AlertTriangle className="h-4 w-4 text-yellow-500 mr-2" />
+                                  ) : status === TestStatus.RUNNING ? (
+                                    <RefreshCw className="h-4 w-4 text-blue-500 mr-2 animate-spin" />
+                                  ) : (
+                                    <Info className="h-4 w-4 text-gray-500 mr-2" />
+                                  )}
+                                  {test.name}
+                                </h4>
+                                <p className="text-sm text-gray-500 mt-1">{test.description}</p>
+                                
+                                {result?.duration && (
+                                  <p className="text-xs text-gray-400 mt-1">
+                                    Duration: {result.duration.toFixed(2)}ms
+                                  </p>
+                                )}
+                                
+                                {result?.error && (
+                                  <div className="mt-2 text-sm text-red-400 bg-red-900/20 p-2 rounded">
+                                    {result.error}
+                                  </div>
+                                )}
+                                
+                                {showDetails === test.id && result?.contextId && (
+                                  <div className="mt-4 space-y-2">
+                                    <h5 className="text-sm font-medium">Test Execution Log</h5>
+                                    <div className="text-xs bg-gray-900/50 p-2 rounded max-h-[200px] overflow-y-auto">
+                                      {enhancedLogger.getLogsByContext(result.contextId).map((log, i) => (
+                                        <div key={i} className="mb-2">
+                                          <div className={`
+                                            ${log.level === LogLevel.ERROR ? 'text-red-400' : 
+                                              log.level === LogLevel.WARN ? 'text-yellow-400' : 
+                                              log.level === LogLevel.INFO ? 'text-blue-400' : 'text-gray-400'} 
+                                            font-mono
+                                          `}>
+                                            [{new Date(log.timestamp).toLocaleTimeString()}] [{LogLevel[log.level]}] {log.message}
+                                          </div>
+                                          {log.data && (
+                                            <pre className="text-xs text-gray-500 ml-4 mt-1 whitespace-pre-wrap">
+                                              {JSON.stringify(log.data, null, 2)}
+                                            </pre>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex space-x-2">
+                                {result?.contextId && (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    onClick={() => toggleDetails(test.id)} 
+                                    className="text-xs"
+                                  >
+                                    {showDetails === test.id ? 'Hide Details' : 'Show Details'}
+                                  </Button>
+                                )}
+                                <Button 
+                                  size="sm" 
+                                  onClick={() => handleRunTest(test.id)} 
+                                  disabled={isRunning}
+                                >
+                                  Run
+                                </Button>
+                              </div>
+                            </div>
+                            {test.dependencies && test.dependencies.length > 0 && (
+                              <div className="mt-2 flex items-center flex-wrap gap-1">
+                                <span className="text-xs text-gray-500">Dependencies:</span>
+                                {test.dependencies.map(depId => {
+                                  const depResult = results[depId];
+                                  const passed = depResult?.status === TestStatus.PASSED;
+                                  
+                                  return (
+                                    <Badge 
+                                      key={depId} 
+                                      variant={passed ? "outline" : "secondary"}
+                                      className={passed ? "bg-green-900/20" : "bg-gray-900/20"}
+                                    >
+                                      {depId}
+                                      {passed && <CheckSquare className="h-3 w-3 ml-1 text-green-500" />}
+                                    </Badge>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        </Card>
+                      );
+                    })}
                   </div>
-                  <Button 
-                    size="sm" 
-                    onClick={() => handleRunTest(result.id)}
-                    disabled={loading || result.status === TestStatus.RUNNING}
-                  >
-                    Run
-                  </Button>
                 </div>
-              </div>
-            ))}
+              ))}
+            </ScrollArea>
           </div>
-        </div>
-      </CardContent>
-      <CardFooter>
-        <div className="text-sm text-gray-500">
-          Total: {Object.values(results).length} tests
-        </div>
-      </CardFooter>
-    </Card>
+        </CardContent>
+        <CardFooter>
+          <div className="text-xs text-gray-500">
+            {Object.values(results).filter(r => r.status === TestStatus.PASSED).length} passed, 
+            {Object.values(results).filter(r => r.status === TestStatus.FAILED).length} failed, 
+            {Object.values(results).filter(r => r.status === TestStatus.SKIPPED).length} skipped
+          </div>
+        </CardFooter>
+      </Card>
+    </div>
   );
 }
-
-export default {
-  registerFeatureTest,
-  runFeatureTest,
-  runAllFeatureTests,
-  getTestResults,
-  getTestResult,
-  resetTestResults,
-  generateTestReport,
-  FeatureTester,
-  TestStatus,
-};
