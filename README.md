@@ -59,6 +59,16 @@ GOAL:SYNC is built with:
 - **State Management**: React Query for server state, React context for UI state
 - **Testing**: Custom testing utilities for feature verification and API testing
 
+## Documentation
+
+The project includes comprehensive documentation to help developers:
+
+- **[API Standards](API_STANDARDS.md)**: Guidelines for API interaction, error formats, and validation requirements
+- **[API Testing Guide](API_TESTING.md)**: Detailed examples for testing API endpoints
+- **[Contributing Guide](CONTRIBUTING.md)**: Instructions for setting up the development environment and contributing to the project
+- **[Feature Testing](FEATURE_TESTING.md)**: Guide to using the feature testing infrastructure
+- **[Debug Infrastructure](DEBUG_INFRASTRUCTURE.md)**: Details on debugging utilities
+
 ## Testing Infrastructure
 
 The application includes built-in testing utilities:
@@ -66,5 +76,36 @@ The application includes built-in testing utilities:
 - **apiTester**: Tests API endpoints and generates reports
 - **featureTester**: Verifies UI features and functionalities
 - **logger**: Monitors application activity and feature verification
+- **Error Reporting**: Structured error format with field-specific validation details
 
 These utilities help ensure robust application functionality and streamline the development process.
+
+## Error Handling
+
+GOAL:SYNC implements a sophisticated error handling system that provides:
+
+- Structured error responses with consistent format
+- Field-specific validation details
+- Constraint information and expected vs. received values
+- Documentation links for resolving common issues
+- Proper HTTP status codes based on error type
+
+Example error response:
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Request validation failed",
+    "details": [
+      { 
+        "field": "deadline", 
+        "expected": "ISO8601 date string", 
+        "received": "2025-04-07", 
+        "constraint": "format: YYYY-MM-DDTHH:mm:ss.sssZ" 
+      }
+    ],
+    "documentationUrl": "/docs/api-validation"
+  }
+}
+```

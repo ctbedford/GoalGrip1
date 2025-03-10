@@ -163,7 +163,7 @@ export async function testAllEndpoints(): Promise<ApiTestResult[]> {
     currentValue: 0,
     unit: 'points',
     deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-    categoryId: null,
+    categoryId: 0, // Using 0 instead of null for no category
     reminderFrequency: 'daily',
     userId: 1
   };

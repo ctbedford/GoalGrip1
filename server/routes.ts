@@ -11,7 +11,13 @@ import {
   progressLogFormSchema
 } from "@shared/schema";
 import { z } from "zod";
-import { fromZodError } from "zod-validation-error";
+import { 
+  formatZodError, 
+  notFoundError, 
+  conflictError, 
+  internalError, 
+  errorMiddleware 
+} from "./errorHandler";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Middleware to check authentication
@@ -22,6 +28,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     next();
   };
 
+  // Register global error handler middleware
+  app.use(errorMiddleware);
+
   // ==== User Routes ====
   app.post('/api/users', async (req, res) => {
     try {
@@ -30,16 +39,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if user exists
       const existingUser = await storage.getUserByUsername(userData.username);
       if (existingUser) {
-        return res.status(400).json({ message: "Username already exists" });
+        return res.status(409).json(conflictError("Username already exists"));
       }
       
       const user = await storage.createUser(userData);
       res.status(201).json(user);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: fromZodError(error).message });
+        return res.status(400).json(formatZodError(error));
       }
-      res.status(500).json({ message: "Failed to create user" });
+      res.status(500).json(internalError("Failed to create user"));
     }
   });
 
@@ -60,12 +69,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const goal = await storage.getGoal(goalId);
       
       if (!goal) {
-        return res.status(404).json({ message: "Goal not found" });
+        return res.status(404).json(notFoundError("Goal"));
       }
       
       res.json(goal);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch goal" });
+      res.status(500).json(internalError("Failed to fetch goal"));
     }
   });
 
@@ -90,9 +99,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(newGoal);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: fromZodError(error).message });
+        return res.status(400).json(formatZodError(error));
       }
-      res.status(500).json({ message: "Failed to create goal" });
+      res.status(500).json(internalError("Failed to create goal"));
     }
   });
 
@@ -159,9 +168,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(newLog);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: fromZodError(error).message });
+        return res.status(400).json(formatZodError(error));
       }
-      res.status(500).json({ message: "Failed to log progress" });
+      res.status(500).json(internalError("Failed to log progress"));
     }
   });
 
