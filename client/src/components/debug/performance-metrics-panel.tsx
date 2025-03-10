@@ -555,8 +555,9 @@ export function PerformanceMetricsPanel() {
                           />
                           <YAxis />
                           <Tooltip 
-                            formatter={(value, name) => {
-                              if (name === 'avgDuration') return [`${value.toFixed(2)} ms`, 'Avg Response Time'];
+                            contentStyle={{ backgroundColor: "#222", border: "1px solid #444", color: "#fff" }}
+                            formatter={(value: any, name: string) => {
+                              if (name === 'avgDuration') return [`${Number(value).toFixed(2)} ms`, 'Avg Response Time'];
                               if (name === 'count') return [value, 'Request Count'];
                               return [value, name];
                             }}

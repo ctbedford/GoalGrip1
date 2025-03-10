@@ -92,6 +92,9 @@ export function UnifiedDebugDashboard() {
     testStatus: 'all',
     searchQuery: ''
   });
+  
+  // State for loading
+  const [isLoadingTests, setIsLoadingTests] = useState(false);
 
   // Get feature data
   const features = useMemo(() => {
@@ -179,6 +182,9 @@ export function UnifiedDebugDashboard() {
 
   // Function to run all tests
   const handleRunAllTests = async () => {
+    // If already loading, don't run again
+    if (isLoadingTests) return;
+    
     // Log that all tests are being run
     debugStorage.addLogEntry(
       LogLevel.INFO,
@@ -187,7 +193,72 @@ export function UnifiedDebugDashboard() {
       { timestamp: new Date() }
     );
     
-    // TODO: Implement this in next batch
+    // Get all registered tests
+    const allTests = getRegisteredTests();
+    
+    if (allTests.length === 0) {
+      debugStorage.addLogEntry(
+        LogLevel.WARN,
+        FeatureArea.UI,
+        "No tests found to run",
+        { timestamp: new Date() }
+      );
+      return;
+    }
+    
+    // Show notification that tests are running
+    console.log(`Running ${allTests.length} tests...`);
+    
+    // Set loading state
+    setIsLoadingTests(true);
+    
+    try {
+      // Run each test sequentially and collect results
+      const results = [];
+      for (const test of allTests) {
+        debugStorage.addLogEntry(
+          LogLevel.INFO,
+          FeatureArea.UI,
+          `Running test: ${test.name}`,
+          { testId: test.id }
+        );
+        
+        const result = await runFeatureTest(test.id);
+        results.push(result);
+        
+        // Log the result
+        debugStorage.addLogEntry(
+          result.status === TestStatus.PASSED ? LogLevel.INFO : LogLevel.ERROR,
+          FeatureArea.UI,
+          `Test result: ${result.name} - ${result.status}`,
+          { testId: test.id, result }
+        );
+      }
+      
+      // Log completion
+      const passedCount = results.filter(r => r.status === TestStatus.PASSED).length;
+      debugStorage.addLogEntry(
+        LogLevel.INFO,
+        FeatureArea.UI,
+        `Completed running all tests. Passed: ${passedCount}/${results.length}`,
+        { results }
+      );
+      
+      console.log(`Completed running all tests. Passed: ${passedCount}/${results.length}`);
+      
+      // Force a refresh to show updated test results
+      setFilters({...filters});
+    } catch (error) {
+      debugStorage.addLogEntry(
+        LogLevel.ERROR,
+        FeatureArea.UI,
+        "Error running tests",
+        { error }
+      );
+      console.error("Error running tests:", error);
+    } finally {
+      setIsLoadingTests(false);
+    }
   };
 
   return (
@@ -202,10 +273,20 @@ export function UnifiedDebugDashboard() {
           <h1 className="text-2xl font-bold">Unified Debug Dashboard</h1>
           <Button 
             onClick={handleRunAllTests}
-            className="flex items-center space-x-2"
+            disabled={isLoadingTests}
+            className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white"
           >
-            <Play className="h-4 w-4" />
-            <span>Run All Tests</span>
+            {isLoadingTests ? (
+              <>
+                <RefreshCw className="h-4 w-4 animate-spin" />
+                <span>Running Tests...</span>
+              </>
+            ) : (
+              <>
+                <Play className="h-4 w-4" />
+                <span>Run All Tests</span>
+              </>
+            )}
           </Button>
         </div>
         
@@ -303,64 +384,64 @@ export function UnifiedDebugDashboard() {
                 
                 {/* Status Summary */}
                 <div className="grid grid-cols-3 gap-4 mb-6">
-                  <Card className="bg-gray-50 dark:bg-gray-800">
+                  <Card className="border border-green-200 dark:border-green-800 shadow-md">
                     <CardContent className="p-4">
                       <div className="flex justify-between items-center">
                         <div>
-                          <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Implemented</div>
-                          <div className="text-2xl font-bold">
+                          <div className="text-sm font-medium text-gray-600 dark:text-gray-200">Implemented</div>
+                          <div className="text-2xl font-bold text-gray-900 dark:text-white">
                             {features.filter(f => f.implemented).length}/{features.length}
                           </div>
                         </div>
-                        <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                          <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+                        <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-800 flex items-center justify-center">
+                          <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-300" />
                         </div>
                       </div>
-                      <div className="mt-2 h-2 rounded-full bg-gray-200 dark:bg-gray-700">
+                      <div className="mt-3 h-3 rounded-full bg-gray-200 dark:bg-gray-700">
                         <div 
-                          className="h-full rounded-full bg-green-500" 
+                          className="h-full rounded-full bg-green-500 dark:bg-green-400" 
                           style={{ width: `${(features.filter(f => f.implemented).length / features.length) * 100}%` }}
                         ></div>
                       </div>
                     </CardContent>
                   </Card>
-                  <Card className="bg-gray-50 dark:bg-gray-800">
+                  <Card className="border border-blue-200 dark:border-blue-800 shadow-md">
                     <CardContent className="p-4">
                       <div className="flex justify-between items-center">
                         <div>
-                          <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Tested</div>
-                          <div className="text-2xl font-bold">
+                          <div className="text-sm font-medium text-gray-600 dark:text-gray-200">Tested</div>
+                          <div className="text-2xl font-bold text-gray-900 dark:text-white">
                             {features.filter(f => f.tested).length}/{features.length}
                           </div>
                         </div>
-                        <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                          <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                        <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-800 flex items-center justify-center">
+                          <FileText className="h-6 w-6 text-blue-600 dark:text-blue-300" />
                         </div>
                       </div>
-                      <div className="mt-2 h-2 rounded-full bg-gray-200 dark:bg-gray-700">
+                      <div className="mt-3 h-3 rounded-full bg-gray-200 dark:bg-gray-700">
                         <div 
-                          className="h-full rounded-full bg-blue-500" 
+                          className="h-full rounded-full bg-blue-500 dark:bg-blue-400" 
                           style={{ width: `${(features.filter(f => f.tested).length / features.length) * 100}%` }}
                         ></div>
                       </div>
                     </CardContent>
                   </Card>
-                  <Card className="bg-gray-50 dark:bg-gray-800">
+                  <Card className="border border-purple-200 dark:border-purple-800 shadow-md">
                     <CardContent className="p-4">
                       <div className="flex justify-between items-center">
                         <div>
-                          <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Complete</div>
-                          <div className="text-2xl font-bold">
+                          <div className="text-sm font-medium text-gray-600 dark:text-gray-200">Complete</div>
+                          <div className="text-2xl font-bold text-gray-900 dark:text-white">
                             {features.filter(f => f.implemented && f.tested).length}/{features.length}
                           </div>
                         </div>
-                        <div className="h-10 w-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                          <CheckCircle2 className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                        <div className="h-12 w-12 rounded-full bg-purple-100 dark:bg-purple-800 flex items-center justify-center">
+                          <CheckCircle2 className="h-6 w-6 text-purple-600 dark:text-purple-300" />
                         </div>
                       </div>
-                      <div className="mt-2 h-2 rounded-full bg-gray-200 dark:bg-gray-700">
+                      <div className="mt-3 h-3 rounded-full bg-gray-200 dark:bg-gray-700">
                         <div 
-                          className="h-full rounded-full bg-purple-500" 
+                          className="h-full rounded-full bg-purple-500 dark:bg-purple-400" 
                           style={{ width: `${(features.filter(f => f.implemented && f.tested).length / features.length) * 100}%` }}
                         ></div>
                       </div>
