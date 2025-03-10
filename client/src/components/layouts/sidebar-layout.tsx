@@ -57,8 +57,9 @@ export const SidebarLayout: React.FC<{ children: React.ReactNode }> = ({ childre
         "bg-gray-900 shadow-xl w-64 flex-shrink-0 border-r border-gray-800",
         isMobile ? "hidden" : "flex flex-col"
       )}>
-        <div className="p-4 border-b border-gray-800">
-          <h1 className="text-xl font-bold text-gray-100">Goal Tracker</h1>
+        <div className="p-6 border-b border-gray-800 bg-gradient-to-r from-gray-900 to-blue-900 bg-opacity-30">
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-200 to-gray-100 bg-clip-text text-transparent">GOAL:SYNC</h1>
+          <p className="text-xs text-gray-400 mt-1">TARGET ACQUISITION SYSTEM</p>
         </div>
         
         <nav className="flex-1 p-4">
@@ -96,14 +97,19 @@ export const SidebarLayout: React.FC<{ children: React.ReactNode }> = ({ childre
           </ul>
         </nav>
         
-        <div className="p-4 border-t border-gray-800">
+        <div className="p-5 border-t border-gray-800 bg-black bg-opacity-30">
           <div className="flex items-center">
-            <div className="w-8 h-8 bg-gray-800 rounded-full flex items-center justify-center text-gray-100 font-semibold">
+            <div className="w-10 h-10 bg-blue-900 bg-opacity-60 rounded-md flex items-center justify-center text-blue-200 font-mono font-semibold border border-blue-700 shadow-inner shadow-blue-900/20">
               JS
             </div>
             <div className="ml-3">
-              <p className="text-sm font-medium text-gray-200">John Smith</p>
-              <p className="text-xs text-gray-400">Level 3 Achiever</p>
+              <p className="text-sm font-medium text-blue-100">John Smith</p>
+              <div className="flex items-center mt-1">
+                <div className="h-1.5 w-16 bg-gray-800 rounded overflow-hidden">
+                  <div className="h-full bg-blue-500 w-1/2"></div>
+                </div>
+                <p className="text-xs text-blue-400 ml-2 font-mono">LVL 3</p>
+              </div>
             </div>
           </div>
         </div>
@@ -111,10 +117,13 @@ export const SidebarLayout: React.FC<{ children: React.ReactNode }> = ({ childre
       
       {/* Mobile Header */}
       {isMobile && (
-        <div className="fixed top-0 left-0 right-0 bg-gray-900 z-10 border-b border-gray-800">
+        <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-gray-900 to-blue-900 bg-opacity-90 z-10 border-b border-gray-800">
           <div className="flex items-center justify-between p-4">
-            <h1 className="text-xl font-bold text-gray-100">Goal Tracker</h1>
-            <Button variant="ghost" size="icon" onClick={toggleMobileMenu} className="text-gray-200">
+            <div>
+              <h1 className="text-xl font-bold bg-gradient-to-r from-blue-200 to-gray-100 bg-clip-text text-transparent">GOAL:SYNC</h1>
+              <p className="text-xs text-gray-400">TARGET ACQUISITION</p>
+            </div>
+            <Button variant="ghost" size="icon" onClick={toggleMobileMenu} className="text-blue-200 hover:bg-blue-900 hover:bg-opacity-40">
               <Menu className="h-6 w-6" />
             </Button>
           </div>
@@ -157,14 +166,19 @@ export const SidebarLayout: React.FC<{ children: React.ReactNode }> = ({ childre
                 </ul>
               </nav>
               <Separator className="bg-gray-800"/>
-              <div className="p-4">
+              <div className="p-4 bg-black bg-opacity-30">
                 <div className="flex items-center">
-                  <div className="w-8 h-8 bg-gray-800 rounded-full flex items-center justify-center text-gray-100 font-semibold">
-                    <User className="h-4 w-4" />
+                  <div className="w-10 h-10 bg-blue-900 bg-opacity-60 rounded-md flex items-center justify-center text-blue-200 font-mono font-semibold border border-blue-700 shadow-inner shadow-blue-900/20">
+                    <User className="h-5 w-5" />
                   </div>
                   <div className="ml-3">
-                    <p className="text-sm font-medium text-gray-200">John Smith</p>
-                    <p className="text-xs text-gray-400">Level 3 Achiever</p>
+                    <p className="text-sm font-medium text-blue-100">John Smith</p>
+                    <div className="flex items-center mt-1">
+                      <div className="h-1.5 w-16 bg-gray-800 rounded overflow-hidden">
+                        <div className="h-full bg-blue-500 w-1/2"></div>
+                      </div>
+                      <p className="text-xs text-blue-400 ml-2 font-mono">LVL 3</p>
+                    </div>
                   </div>
                 </div>
               </div>
