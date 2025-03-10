@@ -16,7 +16,9 @@ import {
   Code,
   FileText,
   History,
-  Calendar
+  Calendar,
+  Activity,
+  ClipboardList
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { FeatureArea, getFeatureVerificationStatus } from '@/lib/logger';
