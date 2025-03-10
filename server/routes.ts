@@ -1,6 +1,8 @@
-import type { Express, Request, Response } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import path from "path";
+import fs from "fs";
 import { 
   insertGoalSchema, 
   insertProgressLogSchema, 
@@ -10,8 +12,6 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
-import fs from "fs";
-import path from "path";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Middleware to check authentication
