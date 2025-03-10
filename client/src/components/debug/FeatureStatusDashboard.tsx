@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -12,7 +12,6 @@ import {
   XCircle,
   AlertTriangle,
   Info,
-  X,
   ArrowRight,
   Code,
   FileText,
@@ -22,15 +21,14 @@ import {
 import { Input } from '@/components/ui/input';
 import { FeatureArea, getFeatureVerificationStatus } from '@/lib/logger';
 import * as debugStorage from '@/lib/debugStorage';
+import { TestStatus } from '@/lib/featureTester';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogClose
+  DialogTitle
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
@@ -182,17 +180,6 @@ export function FeatureStatusDashboard() {
     applyFilters(features, searchQuery, areaFilter, value);
   };
   
-  // Initial load
-  useEffect(() => {
-    loadFeatureStatus();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  
-  // Handle modal close
-  const handleCloseModal = () => {
-    setIsDetailModalOpen(false);
-  };
-
   // Get feature test results if available
   const getFeatureTestData = (featureName: string) => {
     const testResults = debugStorage.getFeatureTestResults();
@@ -210,7 +197,13 @@ export function FeatureStatusDashboard() {
       (log.data && JSON.stringify(log.data).includes(featureName))
     );
   };
-
+  
+  // Initial load
+  useEffect(() => {
+    loadFeatureStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  
   return (
     <>
       <Card>
@@ -602,7 +595,7 @@ export function FeatureStatusDashboard() {
                                       <h4 className="font-semibold">{test.name}</h4>
                                       <p className="text-sm text-gray-500">{test.description}</p>
                                     </div>
-                                    <Badge variant={test.status === 'PASSED' ? 'success' : 'destructive'}>
+                                    <Badge variant={String(test.status).toLowerCase().includes('pass') ? 'success' : 'destructive'}>
                                       {test.status}
                                     </Badge>
                                   </div>
@@ -689,6 +682,5 @@ export function FeatureStatusDashboard() {
         </DialogContent>
       </Dialog>
     </>
-  );
   );
 }

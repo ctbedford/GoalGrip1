@@ -22,7 +22,7 @@ import apiTester from '@/lib/apiTester';
 import * as debugStorage from '@/lib/debugStorage';
 import { registerDebugTests } from '@/lib/tests/debug-components';
 import { MarkdownViewer } from '@/components/debug/markdown-viewer';
-import { FeatureStatusDashboard } from '@/components/debug/feature-status-dashboard';
+import { FeatureStatusDashboard } from '@/components/debug/FeatureStatusDashboard';
 import { EnhancedLogViewer } from '@/components/debug/enhanced-log-viewer';
 import { EnhancedApiDashboard } from '@/components/debug/enhanced-api-dashboard';
 import { PerformanceMetricsPanel } from '@/components/debug/performance-metrics-panel';
