@@ -30,6 +30,7 @@ import { FeatureStatusDashboard } from './feature-status-dashboard';
 import { EnhancedLogViewer } from './enhanced-log-viewer';
 import { EnhancedApiDashboard } from './enhanced-api-dashboard';
 import { PerformanceMetricsPanel } from './performance-metrics-panel';
+import { FeatureDetailModal } from './FeatureDetailModal';
 
 // Feature context to share selected feature across components
 interface FeatureStatus {
@@ -137,9 +138,15 @@ export function UnifiedDebugDashboard() {
     });
   }, [features, filters]);
 
+  // State for feature detail modal
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  
   // Function to handle feature selection
   const selectFeature = (feature: FeatureStatus | null) => {
     setSelectedFeature(feature);
+    if (feature) {
+      setIsDetailModalOpen(true);
+    }
   };
 
   // Feature context value
