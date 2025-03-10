@@ -36,6 +36,7 @@ interface LogEntry {
   message: string;
   timestamp: Date;
   data?: any;
+  contextId?: string; // For correlation with execution contexts
 }
 
 export function EnhancedLogViewer() {
@@ -67,7 +68,8 @@ export function EnhancedLogViewer() {
       const lowerQuery = searchQuery.toLowerCase();
       result = result.filter(log => 
         log.message.toLowerCase().includes(lowerQuery) || 
-        (log.data && JSON.stringify(log.data).toLowerCase().includes(lowerQuery))
+        (log.data && JSON.stringify(log.data).toLowerCase().includes(lowerQuery)) ||
+        (log.contextId && log.contextId.toLowerCase().includes(lowerQuery))
       );
     }
     
@@ -98,6 +100,9 @@ export function EnhancedLogViewer() {
       result = result.filter(log => log.level === LogLevel.ERROR);
     } else if (activeTab === 'warnings') {
       result = result.filter(log => log.level === LogLevel.WARN);
+    } else if (activeTab === 'context-traces') {
+      // Only show logs with context IDs for tracing
+      result = result.filter(log => log.contextId && log.contextId.length > 0);
     }
     
     // Apply sorting
@@ -127,6 +132,11 @@ export function EnhancedLogViewer() {
         groupKey = format(log.timestamp, 'yyyy-MM-dd');
       } else if (groupBy === 'hour') {
         groupKey = format(log.timestamp, 'yyyy-MM-dd HH:00');
+      } else if (groupBy === 'context') {
+        // Group by contextId (for tracing execution)
+        groupKey = log.contextId && log.contextId.length > 0 
+          ? `Context: ${log.contextId.substring(0, 8)}...` 
+          : 'No Context ID';
       } else {
         groupKey = 'All Logs';
       }
@@ -391,6 +401,7 @@ export function EnhancedLogViewer() {
                   <SelectItem value="area">Group by Area</SelectItem>
                   <SelectItem value="day">Group by Day</SelectItem>
                   <SelectItem value="hour">Group by Hour</SelectItem>
+                  <SelectItem value="context">Group by Context ID</SelectItem>
                 </SelectContent>
               </Select>
               
@@ -423,6 +434,7 @@ export function EnhancedLogViewer() {
             <TabsTrigger value="all-logs">All Logs</TabsTrigger>
             <TabsTrigger value="errors">Errors</TabsTrigger>
             <TabsTrigger value="warnings">Warnings</TabsTrigger>
+            <TabsTrigger value="context-traces">Context Traces</TabsTrigger>
           </TabsList>
           
           <TabsContent value="all-logs" className="mt-4">
@@ -599,6 +611,84 @@ export function EnhancedLogViewer() {
                         </div>
                       )}
                     </Alert>
+                  ))
+                )}
+              </div>
+            </ScrollArea>
+          </TabsContent>
+          
+          <TabsContent value="context-traces" className="mt-4">
+            <ScrollArea className="h-[500px]">
+              <div className="space-y-2 p-2">
+                {filteredLogs.length === 0 ? (
+                  <div className="text-center p-8 text-gray-500">
+                    No context trace logs found
+                  </div>
+                ) : (
+                  // Group logs by context ID for better tracing
+                  Object.entries(
+                    filteredLogs.reduce((acc, log) => {
+                      const contextId = log.contextId || 'unknown';
+                      if (!acc[contextId]) {
+                        acc[contextId] = [];
+                      }
+                      acc[contextId].push(log);
+                      return acc;
+                    }, {} as Record<string, LogEntry[]>)
+                  ).map(([contextId, contextLogs]) => (
+                    <div key={contextId} className="mb-6 border border-gray-800 rounded-md p-3">
+                      <h3 className="text-sm font-semibold mb-2 text-blue-400 flex items-center">
+                        <span className="bg-blue-900/30 px-2 py-1 rounded mr-2">Context ID: {contextId.substring(0, 12)}...</span>
+                        <span className="text-xs text-gray-400">
+                          {contextLogs.length} logs from {format(contextLogs[0].timestamp, 'HH:mm:ss')} 
+                          to {format(contextLogs[contextLogs.length - 1].timestamp, 'HH:mm:ss')}
+                        </span>
+                      </h3>
+                      
+                      {contextLogs.map((log, index) => (
+                        <Alert
+                          key={index}
+                          variant={
+                            log.level === LogLevel.ERROR ? "destructive" :
+                            log.level === LogLevel.WARN ? "default" :
+                            "outline"
+                          }
+                          className="mb-2 cursor-pointer border-l-4 pl-3 border-l-blue-500"
+                          onClick={() => toggleLogExpansion(index)}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center">
+                              {log.level === LogLevel.ERROR ? (
+                                <AlertCircle className="h-4 w-4 mr-2 text-red-500" />
+                              ) : log.level === LogLevel.WARN ? (
+                                <AlertCircle className="h-4 w-4 mr-2 text-yellow-500" />
+                              ) : log.level === LogLevel.DEBUG ? (
+                                <Braces className="h-4 w-4 mr-2 text-blue-500" />
+                              ) : (
+                                <Info className="h-4 w-4 mr-2 text-blue-500" />
+                              )}
+                              <AlertTitle className="text-sm">
+                                {LogLevel[log.level]} | {log.area} | {format(log.timestamp, 'HH:mm:ss.SSS')}
+                              </AlertTitle>
+                            </div>
+                          </div>
+                          
+                          <AlertDescription className="text-sm mt-1 font-mono">
+                            {log.message}
+                            {expandedLogs.has(index) && log.data && (
+                              <div className="mt-2 border-t pt-2 text-xs overflow-auto max-h-[200px]">
+                                <pre className="whitespace-pre-wrap">
+                                  {typeof log.data === 'object' 
+                                    ? JSON.stringify(log.data, null, 2)
+                                    : String(log.data)
+                                  }
+                                </pre>
+                              </div>
+                            )}
+                          </AlertDescription>
+                        </Alert>
+                      ))}
+                    </div>
                   ))
                 )}
               </div>
