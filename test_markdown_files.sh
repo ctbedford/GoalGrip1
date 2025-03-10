@@ -76,6 +76,17 @@ echo -e "curl -X GET ${BASE_URL}/UNIFIED_DEBUG_IMPLEMENTATION.md"
 echo -e "\n${YELLOW}=== Debug API Integration ===${NC}"
 echo -e "# Get available debug functions:"
 echo -e "curl -X GET ${BASE_URL}/api/debug"
+
+echo -e "\n# List markdown files via Debug API:"
+echo -e "curl -X GET ${BASE_URL}/api/debug/markdown/list"
+
+echo -e "\n# Get content of a specific markdown file via Debug API:"
+echo -e "curl -X GET ${BASE_URL}/api/debug/markdown/content/README.md"
+
+echo -e "\n# Use the function name directly (redirects to specialized endpoint):"
+echo -e "curl -X GET ${BASE_URL}/api/debug/listMarkdownFiles"
+echo -e "curl -X GET ${BASE_URL}/api/debug/getMarkdownContent/API_STANDARDS.md"
+
 echo -e "\n# Create a debug query to list available markdown files:"
 echo -e "curl -X POST ${BASE_URL}/api/debug/query \\"
 echo -e "  -H \"Content-Type: application/json\" \\"

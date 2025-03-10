@@ -162,4 +162,103 @@ router.post('/query', async (req: Request, res: Response) => {
   }
 });
 
+// Add specific implementation for markdown file operations
+// List all markdown files
+router.get('/markdown/list', (req: Request, res: Response) => {
+  try {
+    const rootDir = process.cwd();
+    const mdFiles = fs.readdirSync(rootDir)
+      .filter(file => file.endsWith('.md'))
+      .map(filename => {
+        const filePath = path.join(rootDir, filename);
+        const stats = fs.statSync(filePath);
+        
+        return {
+          filename,
+          path: `/${filename}`,
+          size: stats.size,
+          lastModified: stats.mtime,
+          url: `${req.protocol}://${req.get('host')}/${filename}`
+        };
+      });
+      
+    res.json({
+      message: 'Markdown files retrieved successfully',
+      count: mdFiles.length,
+      files: mdFiles,
+      timestamp: new Date()
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: {
+        code: ErrorCode.INTERNAL_ERROR,
+        message: error instanceof Error ? error.message : 'Failed to retrieve markdown files',
+      }
+    });
+  }
+});
+
+// Get content of a specific markdown file
+router.get('/markdown/content/:filename', (req: Request, res: Response) => {
+  try {
+    const { filename } = req.params;
+    
+    // Validate filename to prevent directory traversal
+    if (!filename.match(/^[A-Za-z0-9_-]+\.md$/)) {
+      return res.status(400).json({
+        error: {
+          code: ErrorCode.VALIDATION_ERROR,
+          message: 'Invalid filename format',
+        }
+      });
+    }
+    
+    const rootDir = process.cwd();
+    const filePath = path.join(rootDir, filename);
+    
+    // Check if file exists
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({
+        error: {
+          code: ErrorCode.NOT_FOUND,
+          message: `Markdown file '${filename}' not found`,
+        }
+      });
+    }
+    
+    // Read file content
+    const content = fs.readFileSync(filePath, 'utf8');
+    const stats = fs.statSync(filePath);
+    
+    res.json({
+      message: 'Markdown content retrieved successfully',
+      filename,
+      size: stats.size,
+      lastModified: stats.mtime,
+      content,
+      timestamp: new Date()
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: {
+        code: ErrorCode.INTERNAL_ERROR,
+        message: error instanceof Error ? error.message : 'Failed to retrieve markdown content',
+      }
+    });
+  }
+});
+
+// Special handling for listMarkdownFiles in the generic function endpoint
+router.get('/listMarkdownFiles', (req: Request, res: Response) => {
+  // Redirect to the dedicated endpoint
+  res.redirect('/api/debug/markdown/list');
+});
+
+// Special handling for getMarkdownContent in the generic function endpoint
+router.get('/getMarkdownContent/:filename', (req: Request, res: Response) => {
+  // Redirect to the dedicated endpoint
+  const { filename } = req.params;
+  res.redirect(`/api/debug/markdown/content/${filename}`);
+});
+
 export default router;
