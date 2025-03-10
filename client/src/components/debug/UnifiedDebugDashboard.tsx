@@ -448,7 +448,7 @@ export function UnifiedDebugDashboard() {
                         <div 
                           key={idx} 
                           className="border rounded-md p-3 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
-                          onClick={() => selectFeature(feature)}
+                          onClick={() => openFeatureDetail(feature)}
                         >
                           <div className="flex items-center">
                             <div>
@@ -473,7 +473,14 @@ export function UnifiedDebugDashboard() {
                                 <><XCircle className="h-3 w-3 mr-1" /> Not Tested</>
                               )}
                             </Badge>
-                            <Button variant="ghost" size="sm">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openFeatureDetail(feature);
+                              }}
+                            >
                               <ChevronRight className="h-4 w-4" />
                             </Button>
                           </div>
@@ -575,7 +582,16 @@ export function UnifiedDebugDashboard() {
               <CardContent>
                 {selectedFeature ? (
                   <div className="space-y-4">
-                    <h3 className="text-xl font-semibold">{selectedFeature.name}</h3>
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-xl font-semibold">{selectedFeature.name}</h3>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => openFeatureDetail(selectedFeature)}
+                      >
+                        View Details
+                      </Button>
+                    </div>
                     
                     <div className="grid grid-cols-2 gap-4">
                       <Card>
