@@ -45,6 +45,7 @@ export interface FeatureTest {
   description: string;
   area: FeatureArea;
   dependencies?: string[];
+  featureName?: string; // Explicitly link test to a feature
   test: (contextId?: string) => Promise<boolean> | boolean;
 }
 
@@ -58,6 +59,11 @@ const testResults: Record<string, FeatureTestResult> = {};
  * This mapping is critical for the "Run all tests" button to work correctly
  */
 function getFeatureNameFromTest(test: FeatureTest): string | null {
+  // First check if the test has an explicit feature name
+  if (test.featureName) {
+    return test.featureName;
+  }
+  
   // Map of test areas to feature names
   const areaToFeatureMap: Record<FeatureArea, string> = {
     [FeatureArea.DASHBOARD]: 'Dashboard',
@@ -127,17 +133,45 @@ export function registerFeatureTest(test: FeatureTest): void {
   const existing = registeredTests.find(t => t.id === test.id);
   if (existing) {
     logger.warn(FeatureArea.UI, `Test with ID ${test.id} already registered, overwriting`);
+    // Remove existing test
+    const index = registeredTests.indexOf(existing);
+    if (index !== -1) {
+      registeredTests.splice(index, 1);
+    }
   }
   
   registeredTests.push(test);
   logger.info(FeatureArea.UI, `Registered feature test: ${test.name}`, { id: test.id });
   
+  // Get the feature name - prefer explicit feature name first
+  const featureName = test.featureName || getFeatureNameFromTest(test);
+  
   // Explicitly mark the test feature as implemented when registering a test
   // This creates the proper association between tests and features
-  const featureName = getFeatureNameFromTest(test);
   if (featureName) {
+    // Register the feature with the appropriate area
+    logger.registerFeature(featureName, test.area, `Feature registered via test: ${test.name}`);
+    
+    // Mark the feature as implemented - this helps ensure we have the proper status
     logger.markFeatureImplemented(featureName, `Test registered: ${test.name}`);
+    
+    // If the test already has a result and it passed, mark the feature as tested too
+    const result = testResults[test.id];
+    if (result && result.status === TestStatus.PASSED) {
+      logger.markFeatureTested(featureName, true, `Test passed: ${test.name}`);
+    }
   }
+  
+  // Update feature test service to ensure mappings are current
+  import('./featureTestService').then(module => {
+    const { featureTestService } = module;
+    // Give a small delay to ensure all registrations are complete
+    setTimeout(() => {
+      if (typeof featureTestService.refreshMapping === 'function') {
+        featureTestService.refreshMapping();
+      }
+    }, 100);
+  });
 }
 
 /**
