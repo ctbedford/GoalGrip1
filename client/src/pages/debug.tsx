@@ -14,7 +14,8 @@ import {
   ActivitySquare,
   BarChart4,
   LineChart,
-  ChevronRight
+  ChevronRight,
+  ServerCog
 } from 'lucide-react';
 import { FeatureTester } from '@/lib/featureTester';
 import logger, { FeatureArea, LogLevel } from '@/lib/logger';
@@ -25,6 +26,7 @@ import { MarkdownViewer } from '@/components/debug/markdown-viewer';
 import { FeatureStatusDashboard } from '@/components/debug/FeatureStatusDashboard';
 import { EnhancedLogViewer } from '@/components/debug/enhanced-log-viewer';
 import { EnhancedApiDashboard } from '@/components/debug/enhanced-api-dashboard';
+import { ApiStateInspector } from '@/components/debug/api-state-inspector';
 import { PerformanceMetricsPanel } from '@/components/debug/performance-metrics-panel';
 import { Separator } from '@/components/ui/separator';
 
@@ -220,7 +222,7 @@ const DebugPage: React.FC = () => {
       
       {/* Debug Interface */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-5 w-full">
+        <TabsList className="grid grid-cols-6 w-full">
           <TabsTrigger value="unified-dashboard">
             <ActivitySquare className="h-4 w-4 mr-2" />
             Feature Dashboard
@@ -231,7 +233,11 @@ const DebugPage: React.FC = () => {
           </TabsTrigger>
           <TabsTrigger value="api-dashboard">
             <Database className="h-4 w-4 mr-2" />
-            API Dashboard
+            API Tests
+          </TabsTrigger>
+          <TabsTrigger value="api-state">
+            <ServerCog className="h-4 w-4 mr-2" />
+            API State
           </TabsTrigger>
           <TabsTrigger value="performance">
             <BarChart4 className="h-4 w-4 mr-2" />
@@ -299,6 +305,11 @@ const DebugPage: React.FC = () => {
           <EnhancedApiDashboard />
         </TabsContent>
         
+        {/* API State Inspector */}
+        <TabsContent value="api-state" className="mt-4">
+          <ApiStateInspector />
+        </TabsContent>
+        
         {/* Performance Metrics */}
         <TabsContent value="performance" className="mt-4">
           <PerformanceMetricsPanel />
@@ -322,7 +333,7 @@ const DebugPage: React.FC = () => {
           </Button>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card className="bg-slate-900/50">
             <CardHeader className="pb-2">
               <CardTitle className="text-base">Console Logs</CardTitle>
@@ -353,6 +364,23 @@ const DebugPage: React.FC = () => {
               >
                 <Database className="h-4 w-4 mr-2" />
                 Open API Dashboard
+              </Button>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-slate-900/50">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">API State Inspector</CardTitle>
+              <CardDescription>View real-time application state from API endpoints</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button 
+                className="w-full"
+                variant="outline"
+                onClick={() => setActiveTab('api-state')}
+              >
+                <ServerCog className="h-4 w-4 mr-2" />
+                Open State Inspector
               </Button>
             </CardContent>
           </Card>
