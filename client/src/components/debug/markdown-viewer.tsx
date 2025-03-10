@@ -10,10 +10,14 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { info, FeatureArea } from '@/lib/logger';
 
 const MARKDOWN_FILES = [
+  { label: 'API Standards', value: 'API_STANDARDS.md' },
+  { label: 'API Testing', value: 'API_TESTING.md' },
+  { label: 'Contributing', value: 'CONTRIBUTING.md' },
   { label: 'Debug Infrastructure', value: 'DEBUG_INFRASTRUCTURE.md' },
   { label: 'Feature Testing', value: 'FEATURE_TESTING.md' },
   { label: 'Implementation Analysis', value: 'IMPLEMENTATION_ANALYSIS.md' },
   { label: 'README', value: 'README.md' },
+  { label: 'Unified Debug Implementation', value: 'UNIFIED_DEBUG_IMPLEMENTATION.md' },
 ];
 
 export function MarkdownViewer() {

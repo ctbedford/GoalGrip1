@@ -2,6 +2,8 @@ import { Request, Response, Router } from 'express';
 import { ErrorCode } from '../errorHandler';
 import { storage } from '../storage';
 import z from 'zod';
+import fs from 'fs';
+import path from 'path';
 
 const router = Router();
 
@@ -36,7 +38,11 @@ const availableFunctionNames = [
   // Feature Test Service functions
   'getEnhancedFeatures',
   'getFeatureTests',
-  'getTestsForFeature'
+  'getTestsForFeature',
+  
+  // Markdown Documentation functions
+  'listMarkdownFiles',
+  'getMarkdownContent'
 ];
 
 // Get available debug functions
