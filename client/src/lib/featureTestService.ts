@@ -32,15 +32,49 @@ export class FeatureTestService {
     this.featureTestMap = {};
     this.testFeatureMap.clear();
     
-    // Create mapping based on area and name matching
-    Object.entries(features).forEach(([featureName, feature]) => {
-      // Initialize empty array for each feature
-      this.featureTestMap[featureName] = [];
+    // Explicit mappings for core features
+    const explicitMappings: Record<string, string[]> = {
+      'Dashboard': ['dashboard-stats', 'dashboard-ui', 'dashboard-api'],
+      'Goal Creation': ['goal-creation', 'create-goal-modal'],
+      'Goal Tracking': ['goal-progress', 'goal-tracking-ui'],
+      'Progress Logging': ['progress-log', 'log-progress-modal'],
+      'Analytics': ['analytics-chart', 'analytics-data'],
+      'Achievements': ['achievement-badges', 'achievement-ui'],
+      'Action Items': ['action-items-creation', 'action-items-completion'],
+      'User Settings': ['settings-update', 'settings-ui'],
+      'Category Management': ['category-creation', 'category-list'],
+      'Performance Metrics': ['performance-metrics', 'memory-usage'],
+      'Debug Dashboard': ['debug-dashboard', 'api-testing', 'feature-testing']
+    };
+    
+    // First apply explicit mappings
+    Object.entries(explicitMappings).forEach(([featureName, testIds]) => {
+      // Initialize or get the existing array
+      this.featureTestMap[featureName] = this.featureTestMap[featureName] || [];
       
-      // Find tests that match this feature
+      // Add all the test IDs to this feature
+      testIds.forEach(testId => {
+        // Only add if the test exists
+        if (tests.some(test => test.id === testId)) {
+          this.featureTestMap[featureName].push(testId);
+          this.testFeatureMap.set(testId, featureName);
+        }
+      });
+    });
+    
+    // Then apply automatic mappings for any remaining features/tests
+    Object.entries(features).forEach(([featureName, feature]) => {
+      // Initialize array if it doesn't exist
+      this.featureTestMap[featureName] = this.featureTestMap[featureName] || [];
+      
+      // Find tests that match this feature but aren't already mapped
       tests.forEach(test => {
+        // Skip if this test is already mapped to a feature
+        if (this.testFeatureMap.has(test.id)) return;
+        
         // Match by area if available
-        if (feature.area && test.area === feature.area) {
+        const featureArea = (feature as any).area;
+        if (featureArea && test.area === featureArea) {
           this.featureTestMap[featureName].push(test.id);
           this.testFeatureMap.set(test.id, featureName);
           return;
@@ -61,6 +95,27 @@ export class FeatureTestService {
           this.testFeatureMap.set(test.id, featureName);
         }
       });
+    });
+    
+    // Ensure all tests have a feature mapping
+    tests.forEach(test => {
+      if (!this.testFeatureMap.has(test.id)) {
+        // Default to mapping by area
+        const defaultFeature = Object.entries(features).find(
+          ([_, feature]) => (feature as any).area === test.area
+        );
+        
+        if (defaultFeature) {
+          this.featureTestMap[defaultFeature[0]].push(test.id);
+          this.testFeatureMap.set(test.id, defaultFeature[0]);
+        } else {
+          // Last resort: map to a generic "Other Features" category
+          const otherFeature = "Other Features";
+          this.featureTestMap[otherFeature] = this.featureTestMap[otherFeature] || [];
+          this.featureTestMap[otherFeature].push(test.id);
+          this.testFeatureMap.set(test.id, otherFeature);
+        }
+      }
     });
   }
   

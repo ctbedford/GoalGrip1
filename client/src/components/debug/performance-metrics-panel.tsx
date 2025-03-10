@@ -591,7 +591,10 @@ export function PerformanceMetricsPanel() {
                           <YAxis />
                           <Tooltip 
                             formatter={(value, name) => {
-                              if (name === 'avgDuration') return [`${value.toFixed(2)} ms`, 'Avg Load Time'];
+                              if (name === 'avgDuration') {
+                                const numValue = typeof value === 'number' ? value : parseFloat(value as string);
+                                return [`${numValue.toFixed(2)} ms`, 'Avg Load Time'];
+                              }
                               return [value, name];
                             }}
                           />
@@ -620,8 +623,14 @@ export function PerformanceMetricsPanel() {
                           <YAxis />
                           <Tooltip 
                             formatter={(value, name) => {
-                              if (name === 'avgRenderTime') return [`${value.toFixed(2)} ms`, 'Avg Render Time'];
-                              if (name === 'maxRenderTime') return [`${value.toFixed(2)} ms`, 'Max Render Time'];
+                              if (name === 'avgRenderTime') {
+                                const numValue = typeof value === 'number' ? value : parseFloat(value as string);
+                                return [`${numValue.toFixed(2)} ms`, 'Avg Render Time'];
+                              }
+                              if (name === 'maxRenderTime') {
+                                const numValue = typeof value === 'number' ? value : parseFloat(value as string);
+                                return [`${numValue.toFixed(2)} ms`, 'Max Render Time'];
+                              }
                               return [value, name];
                             }}
                           />
@@ -765,8 +774,14 @@ export function PerformanceMetricsPanel() {
                           <YAxis dataKey="name" type="category" width={100} />
                           <Tooltip 
                             formatter={(value, name) => {
-                              if (name === 'avgDuration') return [`${value.toFixed(2)} ms`, 'Avg Load Time'];
-                              if (name === 'avgSize') return [formatBytes(value), 'Avg Size'];
+                              if (name === 'avgDuration') {
+                                const numValue = typeof value === 'number' ? value : parseFloat(value as string);
+                                return [`${numValue.toFixed(2)} ms`, 'Avg Load Time'];
+                              }
+                              if (name === 'avgSize') {
+                                const numValue = typeof value === 'number' ? value : parseFloat(value as string);
+                                return [formatBytes(numValue), 'Avg Size'];
+                              }
                               if (name === 'count') return [value, 'Count'];
                               return [value, name];
                             }}
