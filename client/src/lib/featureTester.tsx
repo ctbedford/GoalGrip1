@@ -331,7 +331,7 @@ registerFeatureTest({
       targetValue: 100,
       currentValue: 0, 
       unit: 'items',
-      deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       categoryId: null,
       reminderFrequency: 'daily'
     };
@@ -357,7 +357,7 @@ registerFeatureTest({
         targetValue: 100,
         currentValue: 0,
         unit: 'points',
-        deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         categoryId: null,
         reminderFrequency: 'daily'
       }

@@ -161,7 +161,7 @@ export async function testGoalLifecycle(): Promise<boolean> {
         targetValue: 100,
         currentValue: 0,
         unit: 'points',
-        deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 1 week from now
+        deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 1 week from now
         categoryId: null,
         reminderFrequency: 'daily'
       }
