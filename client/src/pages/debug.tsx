@@ -130,6 +130,13 @@ const DebugPage: React.FC = () => {
     }
   };
   
+  // Clear API test results
+  const clearApiTestResults = () => {
+    debugStorage.clearApiTestResults();
+    setApiTestReport('');
+    logger.info(FeatureArea.API, 'API test results cleared');
+  };
+  
   // Load saved API test results
   const loadApiTestResults = () => {
     const apiTests = debugStorage.getApiTestResults();
@@ -229,6 +236,14 @@ const DebugPage: React.FC = () => {
                     disabled={isApiTesting}
                   >
                     Load Saved Results
+                  </Button>
+                  
+                  <Button 
+                    variant="outline"
+                    onClick={clearApiTestResults}
+                    disabled={isApiTesting}
+                  >
+                    Clear Results
                   </Button>
                 </div>
                 

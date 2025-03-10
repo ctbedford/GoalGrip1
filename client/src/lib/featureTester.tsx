@@ -433,8 +433,35 @@ export function FeatureTester() {
   const [results, setResults] = useState<Record<string, FeatureTestResult>>({});
   const [loading, setLoading] = useState(false);
   
+  // Load feature test results on initialization
   useEffect(() => {
-    setResults(getTestResults());
+    // First check if we have any saved results in debug storage
+    const savedResults = debugStorage.getFeatureTestResults();
+    
+    if (Object.keys(savedResults).length > 0) {
+      // Convert timestamp strings to Date objects if necessary
+      const processedResults = Object.entries(savedResults).reduce((acc, [id, result]) => {
+        acc[id] = {
+          ...result,
+          // Ensure timestamp is a Date object if it exists
+          timestamp: result.timestamp ? 
+            (result.timestamp instanceof Date ? result.timestamp : new Date(result.timestamp)) 
+            : undefined
+        };
+        return acc;
+      }, {} as Record<string, FeatureTestResult>);
+      
+      // Update the test results in memory with saved values
+      Object.entries(processedResults).forEach(([id, result]) => {
+        testResults[id] = result;
+      });
+      
+      logger.info(FeatureArea.UI, `Loaded ${Object.keys(savedResults).length} feature test results from storage`);
+      setResults(processedResults);
+    } else {
+      // If no saved results, use the current in-memory state
+      setResults(getTestResults());
+    }
   }, []);
   
   const handleRunAll = async () => {
@@ -454,6 +481,28 @@ export function FeatureTester() {
     setResults(getTestResults());
   };
   
+  const handleLoadSaved = () => {
+    const savedResults = debugStorage.getFeatureTestResults();
+    
+    if (Object.keys(savedResults).length > 0) {
+      // Process timestamp strings to Date objects
+      const processedResults = Object.entries(savedResults).reduce((acc, [id, result]) => {
+        acc[id] = {
+          ...result,
+          timestamp: result.timestamp ? 
+            (result.timestamp instanceof Date ? result.timestamp : new Date(result.timestamp)) 
+            : undefined
+        };
+        return acc;
+      }, {} as Record<string, FeatureTestResult>);
+      
+      setResults(processedResults);
+      logger.info(FeatureArea.UI, `Loaded ${Object.keys(savedResults).length} feature test results from storage`);
+    } else {
+      logger.info(FeatureArea.UI, 'No saved feature test results found');
+    }
+  };
+  
   return (
     <Card>
       <CardHeader>
@@ -468,6 +517,13 @@ export function FeatureTester() {
             <Button variant="outline" onClick={handleReset} disabled={loading}>
               Reset
             </Button>
+            <Button 
+              variant="outline" 
+              onClick={handleLoadSaved}
+              disabled={loading}
+            >
+              Load Saved
+            </Button>
           </div>
           
           <Separator />
@@ -481,22 +537,34 @@ export function FeatureTester() {
                 <div>
                   <div className="font-medium">{result.name}</div>
                   <div className="text-sm text-gray-500">{result.description}</div>
+                  {result.timestamp && (
+                    <div className="text-xs text-gray-400 mt-1">
+                      Last run: {result.timestamp.toLocaleString()}
+                    </div>
+                  )}
                   {result.error && (
-                    <div className="text-sm text-red-500">{result.error}</div>
+                    <div className="text-sm text-red-500 mt-1">{result.error}</div>
                   )}
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Badge
-                    variant={
-                      result.status === TestStatus.PASSED ? "success" :
-                      result.status === TestStatus.FAILED ? "destructive" :
-                      result.status === TestStatus.SKIPPED ? "warning" :
-                      result.status === TestStatus.RUNNING ? "secondary" :
-                      "outline"
-                    }
-                  >
-                    {result.status}
-                  </Badge>
+                  <div className="flex flex-col items-end mr-2">
+                    <Badge
+                      variant={
+                        result.status === TestStatus.PASSED ? "success" :
+                        result.status === TestStatus.FAILED ? "destructive" :
+                        result.status === TestStatus.SKIPPED ? "warning" :
+                        result.status === TestStatus.RUNNING ? "secondary" :
+                        "outline"
+                      }
+                    >
+                      {result.status}
+                    </Badge>
+                    {result.duration && (
+                      <div className="text-xs text-gray-400 mt-1">
+                        {result.duration.toFixed(2)} ms
+                      </div>
+                    )}
+                  </div>
                   <Button 
                     size="sm" 
                     onClick={() => handleRunTest(result.id)}
