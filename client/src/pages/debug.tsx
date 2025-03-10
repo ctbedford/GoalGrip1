@@ -30,6 +30,7 @@ import { EnhancedLogViewer } from '@/components/debug/enhanced-log-viewer';
 import { EnhancedApiDashboard } from '@/components/debug/enhanced-api-dashboard';
 import { ApiStateInspector } from '@/components/debug/api-state-inspector';
 import { PerformanceMetricsPanel } from '@/components/debug/performance-metrics-panel';
+import { DebugToolchainInspector } from '@/components/debug/debug-toolchain-inspector';
 import { Separator } from '@/components/ui/separator';
 
 // Debug logs
@@ -224,7 +225,7 @@ const DebugPage: React.FC = () => {
       
       {/* Debug Interface */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-6 w-full">
+        <TabsList className="grid grid-cols-7 w-full">
           <TabsTrigger value="unified-dashboard">
             <ActivitySquare className="h-4 w-4 mr-2" />
             Feature Dashboard
@@ -240,6 +241,10 @@ const DebugPage: React.FC = () => {
           <TabsTrigger value="api-state">
             <ServerCog className="h-4 w-4 mr-2" />
             API State
+          </TabsTrigger>
+          <TabsTrigger value="toolchain">
+            <Bug className="h-4 w-4 mr-2" />
+            Toolchain
           </TabsTrigger>
           <TabsTrigger value="performance">
             <BarChart4 className="h-4 w-4 mr-2" />
@@ -312,6 +317,11 @@ const DebugPage: React.FC = () => {
           <ApiStateInspector />
         </TabsContent>
         
+        {/* Debug Toolchain Inspector */}
+        <TabsContent value="toolchain" className="mt-4">
+          <DebugToolchainInspector />
+        </TabsContent>
+        
         {/* Performance Metrics */}
         <TabsContent value="performance" className="mt-4">
           <PerformanceMetricsPanel />
@@ -335,7 +345,7 @@ const DebugPage: React.FC = () => {
           </Button>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card className="bg-slate-900/50">
             <CardHeader className="pb-2">
               <CardTitle className="text-base">Console Logs</CardTitle>
@@ -383,6 +393,23 @@ const DebugPage: React.FC = () => {
               >
                 <ServerCog className="h-4 w-4 mr-2" />
                 Open State Inspector
+              </Button>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-slate-900/50">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Debug Toolchain</CardTitle>
+              <CardDescription>Inspect debug infrastructure state and execute queries</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button 
+                className="w-full"
+                variant="outline"
+                onClick={() => setActiveTab('toolchain')}
+              >
+                <Bug className="h-4 w-4 mr-2" />
+                Open Toolchain Inspector
               </Button>
             </CardContent>
           </Card>
