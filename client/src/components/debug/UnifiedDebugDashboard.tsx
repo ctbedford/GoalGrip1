@@ -821,62 +821,91 @@ export function FeatureDetailModal({ isOpen, onClose }: FeatureDetailModalProps)
                   {tests.length === 0 ? (
                     <div className="text-muted-foreground italic">No tests available for this feature</div>
                   ) : (
-                    <div className="space-y-4">
-                      {tests.map((test) => (
-                        <Card key={test.id}>
-                          <CardHeader className="pb-2">
-                            <CardTitle className="text-base">{test.name}</CardTitle>
-                            <CardDescription>{test.description}</CardDescription>
-                          </CardHeader>
-                          <CardContent className="pb-2">
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <div className="text-sm text-muted-foreground">Status</div>
-                                <div>{renderTestStatusBadge(test.status)}</div>
-                              </div>
-                              <div>
-                                <div className="text-sm text-muted-foreground">Last Run</div>
-                                <div>{test.lastRun ? new Date(test.lastRun).toLocaleString() : 'Never'}</div>
-                              </div>
-                              {test.duration !== undefined && (
-                                <div>
-                                  <div className="text-sm text-muted-foreground">Duration</div>
-                                  <div>{test.duration.toFixed(2)}ms</div>
-                                </div>
-                              )}
-                              {test.error && (
-                                <div className="col-span-2">
-                                  <div className="text-sm text-muted-foreground">Error</div>
-                                  <div className="text-red-500 text-sm p-2 bg-red-50 rounded border border-red-100 mt-1">
-                                    {test.error}
-                                  </div>
-                                </div>
-                              )}
+                    <>
+                      {/* Test Summary Cards */}
+                      <div className="grid grid-cols-3 gap-4 mb-4">
+                        <Card className="bg-slate-50">
+                          <CardContent className="pt-4 pb-2 text-center">
+                            <div className="text-sm font-medium mb-1">Total Tests</div>
+                            <div className="text-2xl font-bold">{tests.length}</div>
+                          </CardContent>
+                        </Card>
+                        <Card className="bg-green-50">
+                          <CardContent className="pt-4 pb-2 text-center">
+                            <div className="text-sm font-medium mb-1">Passed</div>
+                            <div className="text-2xl font-bold text-green-600">
+                              {tests.filter(t => t.status === TestStatus.PASSED).length}
                             </div>
                           </CardContent>
-                          <CardFooter>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              disabled={runningTest !== null}
-                              onClick={() => handleRunTest(test.id)}
-                            >
-                              {runningTest === test.id ? (
-                                <>
-                                  <LuRefreshCw className="h-3 w-3 mr-1 animate-spin" />
-                                  Running...
-                                </>
-                              ) : (
-                                <>
-                                  <LuPlay className="h-3 w-3 mr-1" />
-                                  Run Test
-                                </>
-                              )}
-                            </Button>
-                          </CardFooter>
                         </Card>
-                      ))}
-                    </div>
+                        <Card className={tests.filter(t => t.status === TestStatus.FAILED).length > 0 ? "bg-red-50" : "bg-slate-50"}>
+                          <CardContent className="pt-4 pb-2 text-center">
+                            <div className="text-sm font-medium mb-1">Failed</div>
+                            <div className={`text-2xl font-bold ${tests.filter(t => t.status === TestStatus.FAILED).length > 0 ? "text-red-600" : ""}`}>
+                              {tests.filter(t => t.status === TestStatus.FAILED).length}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+                      
+                      {/* Test Details */}
+                      <div className="space-y-4">
+                        {tests.map((test) => (
+                          <Card key={test.id}>
+                            <CardHeader className="pb-2">
+                              <CardTitle className="text-base">{test.name}</CardTitle>
+                              <CardDescription>{test.description}</CardDescription>
+                            </CardHeader>
+                            <CardContent className="pb-2">
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <div className="text-sm text-muted-foreground">Status</div>
+                                  <div>{renderTestStatusBadge(test.status)}</div>
+                                </div>
+                                <div>
+                                  <div className="text-sm text-muted-foreground">Last Run</div>
+                                  <div>{test.lastRun ? new Date(test.lastRun).toLocaleString() : 'Never'}</div>
+                                </div>
+                                {test.duration !== undefined && (
+                                  <div>
+                                    <div className="text-sm text-muted-foreground">Duration</div>
+                                    <div>{test.duration.toFixed(2)}ms</div>
+                                  </div>
+                                )}
+                                {test.error && (
+                                  <div className="col-span-2">
+                                    <div className="text-sm text-muted-foreground">Error</div>
+                                    <div className="text-red-500 text-sm p-2 bg-red-50 rounded border border-red-100 mt-1">
+                                      {test.error}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </CardContent>
+                            <CardFooter>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                disabled={runningTest !== null}
+                                onClick={() => handleRunTest(test.id)}
+                              >
+                                {runningTest === test.id ? (
+                                  <>
+                                    <LuRefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                                    Running...
+                                  </>
+                                ) : (
+                                  <>
+                                    <LuPlay className="h-3 w-3 mr-1" />
+                                    Run Test
+                                  </>
+                                )}
+                              </Button>
+                            </CardFooter>
+                          </Card>
+                        ))}
+                      </div>
+                    </>
                   )}
                 </div>
               </TabsContent>
