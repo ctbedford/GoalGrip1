@@ -15,7 +15,9 @@ import {
   BarChart4,
   LineChart,
   ChevronRight,
-  ServerCog
+  ServerCog,
+  Wrench,
+  Bug
 } from 'lucide-react';
 import { FeatureTester } from '@/lib/featureTester';
 import logger, { FeatureArea, LogLevel } from '@/lib/logger';
