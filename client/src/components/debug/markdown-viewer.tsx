@@ -100,8 +100,8 @@ export function MarkdownViewer() {
             <p className="text-sm mt-1">{error}</p>
           </div>
         ) : (
-          <ScrollArea className="h-[calc(100vh-300px)] pr-4 border rounded-md p-4 bg-slate-50 dark:bg-slate-900">
-            <article className="prose dark:prose-invert max-w-none">
+          <ScrollArea className="h-[calc(100vh-300px)] pr-4 border rounded-md p-4 bg-slate-900/50">
+            <article className="prose-cyberpunk">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>
                 {markdownContent}
               </ReactMarkdown>

@@ -10,6 +10,8 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
+import fs from "fs";
+import path from "path";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Middleware to check authentication
@@ -229,6 +231,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(badges);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch badges" });
+    }
+  });
+  
+  // ==== Documentation Routes ====
+  app.get('/:filename([A-Za-z0-9_-]+\\.md)', (req, res) => {
+    try {
+      const filename = req.params.filename;
+      const filePath = path.join(process.cwd(), filename);
+      
+      // Check if file exists
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).send(`Markdown file "${filename}" not found`);
+      }
+      
+      // Read file content
+      const content = fs.readFileSync(filePath, 'utf8');
+      
+      // Set content type to text/markdown
+      res.setHeader('Content-Type', 'text/markdown');
+      res.send(content);
+    } catch (error) {
+      console.error(`Error serving markdown file:`, error);
+      res.status(500).send('Failed to read markdown file');
     }
   });
 

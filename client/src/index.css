@@ -153,4 +153,73 @@
     bg-blue-900 bg-opacity-30 text-blue-200 border border-blue-800 rounded;
     box-shadow: 0 0 5px rgba(59, 130, 246, 0.2);
   }
+  
+  /* Markdown Styling */
+  .prose-cyberpunk {
+    @apply prose prose-invert max-w-none;
+  }
+
+  .prose-cyberpunk h1 {
+    @apply text-3xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent mb-6;
+  }
+
+  .prose-cyberpunk h2 {
+    @apply text-2xl font-semibold text-cyan-300 border-b border-cyan-800/50 pb-1 mt-8 mb-4;
+  }
+
+  .prose-cyberpunk h3 {
+    @apply text-xl font-medium text-indigo-300 mt-6 mb-3;
+  }
+
+  .prose-cyberpunk h4 {
+    @apply text-lg font-medium text-purple-300 mt-4 mb-2;
+  }
+
+  .prose-cyberpunk a {
+    @apply text-cyan-400 hover:text-cyan-300 underline decoration-cyan-700 hover:decoration-cyan-500 transition-colors;
+  }
+
+  .prose-cyberpunk code {
+    @apply bg-slate-800 text-cyan-300 px-1.5 py-0.5 rounded font-mono text-sm;
+  }
+
+  .prose-cyberpunk pre {
+    @apply bg-slate-900 border border-slate-700 rounded-md p-4 overflow-x-auto text-sm;
+  }
+
+  .prose-cyberpunk pre code {
+    @apply bg-transparent text-slate-300 p-0;
+  }
+
+  .prose-cyberpunk blockquote {
+    @apply border-l-4 border-indigo-700 bg-slate-900/50 pl-4 py-2 italic text-gray-300;
+  }
+
+  .prose-cyberpunk ul {
+    @apply list-disc pl-5 space-y-2 mb-4;
+  }
+
+  .prose-cyberpunk ol {
+    @apply list-decimal pl-5 space-y-2 mb-4;
+  }
+
+  .prose-cyberpunk li {
+    @apply text-gray-300;
+  }
+
+  .prose-cyberpunk table {
+    @apply border-collapse w-full mb-6;
+  }
+
+  .prose-cyberpunk thead {
+    @apply bg-slate-800;
+  }
+
+  .prose-cyberpunk th {
+    @apply border border-slate-700 px-4 py-2 text-left text-sm font-semibold text-slate-300;
+  }
+
+  .prose-cyberpunk td {
+    @apply border border-slate-700 px-4 py-2 text-sm text-slate-400;
+  }
 }
