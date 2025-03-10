@@ -164,7 +164,8 @@ export async function testAllEndpoints(): Promise<ApiTestResult[]> {
     unit: 'points',
     deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     categoryId: null,
-    reminderFrequency: 'daily'
+    reminderFrequency: 'daily',
+    userId: 1
   };
   results.push(await testEndpoint(ApiEndpoint.GOALS, 'POST', testGoal));
   
@@ -241,7 +242,8 @@ export async function testGoalLifecycle(): Promise<boolean> {
         unit: 'points',
         deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 1 week from now
         categoryId: null,
-        reminderFrequency: 'daily'
+        reminderFrequency: 'daily',
+        userId: 1
       }
     );
     
@@ -435,7 +437,8 @@ export async function testCompleteUserJourney(): Promise<boolean> {
         unit: 'kilometers',
         deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
         categoryId,
-        reminderFrequency: 'weekly'
+        reminderFrequency: 'weekly',
+        userId: 1
       }
     );
     
