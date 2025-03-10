@@ -346,7 +346,8 @@ registerFeatureTest({
       unit: 'items',
       deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       categoryId: null,
-      reminderFrequency: 'daily'
+      reminderFrequency: 'daily',
+      userId: 1
     };
     
     const result = await apiTester.testEndpoint(ApiEndpoint.GOALS, 'POST', testGoal);
@@ -372,7 +373,8 @@ registerFeatureTest({
         unit: 'points',
         deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         categoryId: null,
-        reminderFrequency: 'daily'
+        reminderFrequency: 'daily',
+        userId: 1
       }
     );
     
@@ -475,7 +477,8 @@ registerFeatureTest({
         unit: 'points',
         deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         categoryId: null,
-        reminderFrequency: 'daily'
+        reminderFrequency: 'daily',
+        userId: 1
       }
     );
     
