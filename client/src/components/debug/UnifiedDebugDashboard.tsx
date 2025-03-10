@@ -25,7 +25,7 @@ import { getFeatureVerificationStatus } from '@/lib/logger';
 import { TestStatus } from '@/lib/featureTester';
 import { getTestResults, runFeatureTest, getRegisteredTests } from '@/lib/featureTester';
 import * as debugStorage from '@/lib/debugStorage';
-import { getApiTestResults } from '@/lib/apiTester';
+import { getTestResults as getApiTestResults } from '@/lib/apiTester';
 import { FeatureStatusDashboard } from './feature-status-dashboard';
 import { EnhancedLogViewer } from './enhanced-log-viewer';
 import { EnhancedApiDashboard } from './enhanced-api-dashboard';
@@ -107,8 +107,8 @@ export function UnifiedDebugDashboard() {
   // Filter features based on current filters
   const filteredFeatures = useMemo(() => {
     return features.filter(feature => {
-      // Filter by area
-      if (filters.area !== 'all' && feature.area !== filters.area) {
+      // Filter by area (safely check if area exists)
+      if (filters.area !== 'all' && (!feature.area || feature.area !== filters.area)) {
         return false;
       }
       
@@ -180,7 +180,75 @@ export function UnifiedDebugDashboard() {
       { timestamp: new Date() }
     );
     
-    // TODO: Implement this in next batch
+    try {
+      // Get registered tests
+      const testsToRun = getRegisteredTests();
+      
+      // Log how many tests will be run
+      debugStorage.addLogEntry(
+        LogLevel.INFO,
+        FeatureArea.UI,
+        `Initiating ${testsToRun.length} feature tests`,
+        { testCount: testsToRun.length }
+      );
+      
+      // Create a context for this test run
+      const contextId = `all-tests-${Date.now()}`;
+      
+      // Run each test sequentially and collect results
+      const results = [];
+      
+      for (const test of testsToRun) {
+        try {
+          debugStorage.addLogEntry(
+            LogLevel.INFO,
+            FeatureArea.UI,
+            `Running test: ${test.id}`,
+            { testId: test.id, testName: test.name }
+          );
+          
+          // Run the test
+          const result = await runFeatureTest(test.id);
+          results.push(result);
+          
+          // Update the UI to reflect the new test status
+          // This will force a refresh of the test results in the UI
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          debugStorage.addLogEntry(
+            LogLevel.ERROR,
+            FeatureArea.UI,
+            `Error running test ${test.id}`,
+            { testId: test.id, error: errorMessage }
+          );
+        }
+      }
+      
+      // Log completion
+      const passedCount = results.filter(r => r.status === TestStatus.PASSED).length;
+      const failedCount = results.filter(r => r.status === TestStatus.FAILED).length;
+      const skippedCount = results.filter(r => r.status === TestStatus.SKIPPED).length;
+      
+      debugStorage.addLogEntry(
+        LogLevel.INFO,
+        FeatureArea.UI,
+        `Test run complete: ${passedCount} passed, ${failedCount} failed, ${skippedCount} skipped`,
+        { passed: passedCount, failed: failedCount, skipped: skippedCount }
+      );
+      
+      // Force a refresh of the component by setting a state variable
+      // This is just a temporary solution until we implement proper state management
+      setSelectedTab(selectedTab);
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      debugStorage.addLogEntry(
+        LogLevel.ERROR,
+        FeatureArea.UI,
+        "Error running all tests",
+        { error: errorMessage }
+      );
+    }
   };
 
   return (
@@ -370,7 +438,7 @@ export function UnifiedDebugDashboard() {
                             <div>
                               <div className="font-medium">{feature.name}</div>
                               <div className="text-sm text-gray-500">
-                                {feature.area} • Last updated: {feature.lastVerified ? new Date(feature.lastVerified).toLocaleDateString() : 'Never'}
+                                {feature.area || 'General'} • Last updated: {feature.lastVerified ? new Date(feature.lastVerified).toLocaleDateString() : 'Never'}
                               </div>
                             </div>
                           </div>
