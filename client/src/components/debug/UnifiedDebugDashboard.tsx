@@ -167,7 +167,19 @@ export function UnifiedDebugDashboard() {
     const contextId = createLoggingContext('All Feature Tests', 'global');
     
     try {
-      await runAllFeatureTests();
+      const results = await runAllFeatureTests();
+      
+      // Update the feature test service with all test IDs that were run
+      featureTestService.updateFeatureTestStatus(results.map(result => result.id));
+      
+      // Force a refresh of the feature data
+      setRefreshTrigger(prev => prev + 1);
+      
+      logger.info(FeatureArea.UI, `Completed running all tests: ${results.length} tests executed`, {
+        passed: results.filter(r => r.status === TestStatus.PASSED).length,
+        failed: results.filter(r => r.status === TestStatus.FAILED).length,
+        skipped: results.filter(r => r.status === TestStatus.SKIPPED).length
+      });
     } finally {
       if (typeof contextId === 'string') completeContext(contextId, true);
     }

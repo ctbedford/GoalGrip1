@@ -54,6 +54,73 @@ const registeredTests: FeatureTest[] = [];
 const testResults: Record<string, FeatureTestResult> = {};
 
 /**
+ * Helper to determine feature name from test
+ * This mapping is critical for the "Run all tests" button to work correctly
+ */
+function getFeatureNameFromTest(test: FeatureTest): string | null {
+  // Map of test areas to feature names
+  const areaToFeatureMap: Record<FeatureArea, string> = {
+    [FeatureArea.DASHBOARD]: 'Dashboard',
+    [FeatureArea.GOAL]: 'Goal Creation',
+    [FeatureArea.PROGRESS]: 'Progress Logging',
+    [FeatureArea.ANALYTICS]: 'Analytics',
+    [FeatureArea.ACHIEVEMENT]: 'Achievements',
+    [FeatureArea.SETTINGS]: 'User Settings',
+    [FeatureArea.AUTH]: 'Authentication',
+    [FeatureArea.API]: 'API Infrastructure',
+    [FeatureArea.STORAGE]: 'Data Storage',
+    [FeatureArea.UI]: 'UI Components',
+    [FeatureArea.NOTIFICATION]: 'Notifications',
+    [FeatureArea.PERFORMANCE]: 'Performance Metrics'
+  };
+  
+  // Direct mappings for specific test IDs to feature names
+  const testIdToFeatureMap: Record<string, string> = {
+    'dashboard-stats': 'Dashboard',
+    'dashboard-ui': 'Dashboard',
+    'dashboard-api': 'Dashboard',
+    'goal-creation': 'Goal Creation',
+    'create-goal-modal': 'Goal Creation',
+    'goal-tracking-ui': 'Goal Tracking',
+    'goal-progress': 'Goal Tracking',
+    'progress-log': 'Progress Logging',
+    'log-progress-modal': 'Progress Logging',
+    'analytics-chart': 'Analytics',
+    'analytics-data': 'Analytics',
+    'achievement-badges': 'Achievements',
+    'achievement-ui': 'Achievements',
+    'action-items-creation': 'Action Items',
+    'action-items-completion': 'Action Items',
+    'category-creation': 'Category Management',
+    'category-list': 'Category Management',
+    'settings-update': 'User Settings',
+    'settings-ui': 'User Settings',
+    'performance-metrics': 'Performance Metrics',
+    'memory-usage': 'Performance Metrics',
+    'enhanced-logger': 'Debug Infrastructure',
+    'api-tester': 'Debug Infrastructure',
+    'feature-tester': 'Debug Infrastructure',
+    'log-viewer': 'Debug Infrastructure',
+    'api-dashboard': 'Debug Infrastructure',
+    'feature-dashboard': 'Debug Infrastructure',
+    'debug-infrastructure': 'Debug Infrastructure'
+  };
+  
+  // First check for direct mapping by ID
+  if (test.id in testIdToFeatureMap) {
+    return testIdToFeatureMap[test.id];
+  }
+  
+  // Then fall back to area mapping
+  if (test.area in areaToFeatureMap) {
+    return areaToFeatureMap[test.area];
+  }
+  
+  // No mapping found
+  return null;
+}
+
+/**
  * Register a feature test
  */
 export function registerFeatureTest(test: FeatureTest): void {
@@ -64,6 +131,13 @@ export function registerFeatureTest(test: FeatureTest): void {
   
   registeredTests.push(test);
   logger.info(FeatureArea.UI, `Registered feature test: ${test.name}`, { id: test.id });
+  
+  // Explicitly mark the test feature as implemented when registering a test
+  // This creates the proper association between tests and features
+  const featureName = getFeatureNameFromTest(test);
+  if (featureName) {
+    logger.markFeatureImplemented(featureName, `Test registered: ${test.name}`);
+  }
 }
 
 /**

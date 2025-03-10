@@ -44,7 +44,11 @@ export class FeatureTestService {
       'User Settings': ['settings-update', 'settings-ui'],
       'Category Management': ['category-creation', 'category-list'],
       'Performance Metrics': ['performance-metrics', 'memory-usage'],
-      'Debug Dashboard': ['debug-dashboard', 'api-testing', 'feature-testing']
+      // Debug infrastructure specific mappings
+      'Debug Infrastructure': ['debug-infrastructure', 'enhanced-logger', 'api-tester', 'feature-tester'],
+      'Log Viewer': ['log-viewer'],
+      'API Dashboard': ['api-dashboard'],
+      'Feature Dashboard': ['feature-dashboard']
     };
     
     // First apply explicit mappings
@@ -194,13 +198,23 @@ export class FeatureTestService {
       const featureName = this.testFeatureMap.get(testId);
       if (featureName) {
         updatedFeatures.add(featureName);
+        
+        // Get the test result for this test
+        const testResult = testResults[testId];
+        if (testResult && testResult.status === TestStatus.PASSED) {
+          // Mark the feature as tested in the logger
+          import('./logger').then(loggerModule => {
+            loggerModule.markFeatureTested(featureName, true, `Test passed: ${testResult.name}`);
+          });
+        }
       }
     });
     
-    // Notify listeners if features were updated
-    if (updatedFeatures.size > 0) {
-      this.notifyListeners();
-    }
+    // Force a remapping after test runs to ensure everything is up to date
+    this.initializeMapping();
+    
+    // Notify listeners about updates
+    this.notifyListeners();
   }
   
   /**
