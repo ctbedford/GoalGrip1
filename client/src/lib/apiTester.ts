@@ -7,6 +7,7 @@
 
 import { apiRequest } from './queryClient';
 import logger, { FeatureArea } from './logger';
+import * as debugStorage from './debugStorage';
 
 // API endpoint groups for testing
 export enum ApiEndpoint {
@@ -106,6 +107,8 @@ export async function testEndpoint(
   }
   
   testResults.push(result);
+  // Store result in debug storage for persistence
+  debugStorage.addApiTestResult(result);
   return result;
 }
 

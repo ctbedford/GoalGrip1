@@ -136,6 +136,9 @@ function logInternal(
         break;
     }
   }
+  
+  // Persist log to debug storage
+  debugStorage.addLogEntry(level, area, message, data);
 }
 
 /**

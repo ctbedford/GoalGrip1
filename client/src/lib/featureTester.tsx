@@ -12,6 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import logger, { FeatureArea } from './logger';
 import apiTester, { ApiEndpoint } from './apiTester';
+import * as debugStorage from './debugStorage';
 
 // Feature test status
 export enum TestStatus {
@@ -149,6 +150,9 @@ export async function runFeatureTest(testId: string): Promise<FeatureTestResult>
     
     testResults[test.id] = result;
     
+    // Store result in debug storage for persistence
+    debugStorage.updateFeatureTestResult(test.id, result);
+    
     if (success) {
       logger.info(
         FeatureArea.UI,
@@ -185,6 +189,9 @@ export async function runFeatureTest(testId: string): Promise<FeatureTestResult>
     };
     
     testResults[test.id] = result;
+    
+    // Store result in debug storage for persistence
+    debugStorage.updateFeatureTestResult(test.id, result);
     
     logger.error(
       FeatureArea.UI,
@@ -257,7 +264,13 @@ export function resetTestResults(): void {
       description: registeredTests.find(t => t.id === id)?.description || '',
       status: TestStatus.NOT_STARTED,
     };
+    
+    // Update in debug storage
+    debugStorage.updateFeatureTestResult(id, testResults[id]);
   });
+  
+  // Clear feature test results in debug storage
+  debugStorage.clearFeatureTestResults();
   
   logger.info(FeatureArea.UI, 'Reset all test results');
 }
