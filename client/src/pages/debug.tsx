@@ -4,11 +4,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Terminal, CheckCircle2, AlertCircle, Braces, Database } from 'lucide-react';
+import { Terminal, CheckCircle2, AlertCircle, Braces, Database, FileText } from 'lucide-react';
 import { FeatureTester } from '@/lib/featureTester';
 import logger, { FeatureArea, LogLevel } from '@/lib/logger';
 import apiTester from '@/lib/apiTester';
 import * as debugStorage from '@/lib/debugStorage';
+import { MarkdownViewer } from '@/components/debug/markdown-viewer';
 
 // Debug logs
 interface LogEntry {
@@ -191,7 +192,7 @@ const DebugPage: React.FC = () => {
       
       {/* Debug Interface */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-3 w-full max-w-md">
+        <TabsList className="grid grid-cols-4 w-full max-w-md">
           <TabsTrigger value="feature-tests">
             <CheckCircle2 className="h-4 w-4 mr-2" />
             Feature Tests
@@ -203,6 +204,10 @@ const DebugPage: React.FC = () => {
           <TabsTrigger value="console">
             <Terminal className="h-4 w-4 mr-2" />
             Console
+          </TabsTrigger>
+          <TabsTrigger value="docs">
+            <FileText className="h-4 w-4 mr-2" />
+            Docs
           </TabsTrigger>
         </TabsList>
         
@@ -339,6 +344,11 @@ const DebugPage: React.FC = () => {
               </div>
             </CardFooter>
           </Card>
+        </TabsContent>
+        
+        {/* Documentation Tab */}
+        <TabsContent value="docs" className="mt-4">
+          <MarkdownViewer />
         </TabsContent>
       </Tabs>
     </div>
