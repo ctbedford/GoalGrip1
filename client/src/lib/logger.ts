@@ -182,10 +182,13 @@ export function error(area: FeatureArea, message: string, data?: any): void {
  */
 export function registerFeature(
   featureName: string,
-  implemented: boolean = false,
+  implementedOrArea: boolean | FeatureArea = false,
   tested: boolean = false,
   notes: string = ''
 ): void {
+  // Handle the case where the second parameter is a FeatureArea
+  const implemented = typeof implementedOrArea === 'boolean' ? implementedOrArea : false;
+  const area = typeof implementedOrArea !== 'boolean' ? implementedOrArea : undefined;
   if (!config.enableFeatureVerification) return;
   
   if (!featureVerification[featureName]) {

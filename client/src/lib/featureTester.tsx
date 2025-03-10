@@ -150,7 +150,11 @@ export function registerFeatureTest(test: FeatureTest): void {
   // This creates the proper association between tests and features
   if (featureName) {
     // Register the feature with the appropriate area
-    logger.registerFeature(featureName, test.area, `Feature registered via test: ${test.name}`);
+    logger.registerFeature(
+      featureName, 
+      test.area as unknown as string, // Convert FeatureArea to string for compatibility
+      `Feature registered via test: ${test.name}`
+    );
     
     // Mark the feature as implemented - this helps ensure we have the proper status
     logger.markFeatureImplemented(featureName, `Test registered: ${test.name}`);

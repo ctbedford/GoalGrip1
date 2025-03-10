@@ -113,18 +113,35 @@ export function determineFeatureTestStatus(tests: FeatureTestInfo[]): 'not_teste
   
   const summary = calculateTestResultSummary(tests);
   
+  // If all tests were run and passed
   if (summary.total === summary.passed && summary.total > 0) {
     return 'passed';
   }
   
+  // If at least one test has been run
+  const testsRun = summary.passed + summary.failed + summary.skipped;
+  
+  // If no tests have been run yet
+  if (testsRun === 0) {
+    return 'not_tested';
+  }
+  
+  // If any test failed, the feature test status is failed
   if (summary.failed > 0) {
     return 'failed';
   }
   
-  if (summary.skipped > 0) {
+  // If some tests passed and others were skipped
+  if (summary.passed > 0 && summary.skipped > 0) {
+    return 'partially_passed';
+  }
+  
+  // If all tests were skipped
+  if (summary.skipped > 0 && summary.skipped === testsRun) {
     return 'skipped';
   }
   
+  // If some tests passed and others not run
   if (summary.passed > 0) {
     return 'partially_passed';
   }
@@ -139,13 +156,27 @@ export function enhanceFeatureStatus(
   feature: { name: string; implemented: boolean; tested: boolean; lastVerified: Date | null; notes: string[]; area?: FeatureArea },
   tests: FeatureTestInfo[]
 ): EnhancedFeatureStatus {
+  // Calculate test status based on the available tests
+  const testStatus = determineFeatureTestStatus(tests);
+  
+  // Calculate last tested date from test runs
+  const summary = calculateTestResultSummary(tests);
+  const lastTested = summary.lastRun;
+  
+  // Ensure implementation status correctly reflects test results
+  // If any test passes, the feature should be marked as implemented
+  let implemented = feature.implemented;
+  if (testStatus === 'passed' || testStatus === 'partially_passed') {
+    implemented = true;
+  }
+  
   return {
     name: feature.name,
     area: feature.area,
-    implemented: feature.implemented,
-    implementedAt: feature.lastVerified || undefined,
-    testStatus: determineFeatureTestStatus(tests),
-    lastTested: tests.length > 0 ? calculateTestResultSummary(tests).lastRun : undefined,
+    implemented,
+    implementedAt: feature.lastVerified || (implemented && lastTested ? lastTested : undefined),
+    testStatus,
+    lastTested,
     notes: feature.notes
   };
 }
