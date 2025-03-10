@@ -4,12 +4,28 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Terminal, CheckCircle2, AlertCircle, Braces, Database, FileText } from 'lucide-react';
+import { 
+  Terminal, 
+  CheckCircle2, 
+  AlertCircle, 
+  Braces, 
+  Database, 
+  FileText, 
+  ActivitySquare,
+  BarChart4,
+  LineChart,
+  ChevronRight
+} from 'lucide-react';
 import { FeatureTester } from '@/lib/featureTester';
 import logger, { FeatureArea, LogLevel } from '@/lib/logger';
 import apiTester from '@/lib/apiTester';
 import * as debugStorage from '@/lib/debugStorage';
 import { MarkdownViewer } from '@/components/debug/markdown-viewer';
+import { FeatureStatusDashboard } from '@/components/debug/feature-status-dashboard';
+import { EnhancedLogViewer } from '@/components/debug/enhanced-log-viewer';
+import { EnhancedApiDashboard } from '@/components/debug/enhanced-api-dashboard';
+import { PerformanceMetricsPanel } from '@/components/debug/performance-metrics-panel';
+import { Separator } from '@/components/ui/separator';
 
 // Debug logs
 interface LogEntry {
@@ -21,7 +37,7 @@ interface LogEntry {
 }
 
 const DebugPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('feature-tests');
+  const [activeTab, setActiveTab] = useState('feature-status');
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [apiTestReport, setApiTestReport] = useState<string>('');
   const [isApiTesting, setIsApiTesting] = useState(false);
@@ -86,6 +102,9 @@ const DebugPage: React.FC = () => {
       },
       ...prevLogs.slice(0, 999), // Keep last 1000 logs
     ]);
+    
+    // Also add to persistent storage
+    debugStorage.addLogEntry(level, area, String(message), data);
   };
   
   // Clear logs
@@ -182,168 +201,66 @@ const DebugPage: React.FC = () => {
     <div className="space-y-6">
       {/* Page Header */}
       <div className="space-y-2">
-        <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-100 to-gray-100 bg-clip-text text-transparent">
-          Debug Console
+        <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-400 via-cyan-500 to-indigo-500 bg-clip-text text-transparent">
+          Advanced Debug Console
         </h2>
         <p className="text-gray-400">
-          Test, verify, and debug application features
+          Comprehensive toolset for monitoring, testing, and debugging the application
         </p>
       </div>
       
       {/* Debug Interface */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-4 w-full max-w-md">
+        <TabsList className="grid grid-cols-6 w-full">
+          <TabsTrigger value="feature-status">
+            <ActivitySquare className="h-4 w-4 mr-2" />
+            Feature Status
+          </TabsTrigger>
+          <TabsTrigger value="logs">
+            <Terminal className="h-4 w-4 mr-2" />
+            Logs
+          </TabsTrigger>
+          <TabsTrigger value="api-dashboard">
+            <Database className="h-4 w-4 mr-2" />
+            API Dashboard
+          </TabsTrigger>
+          <TabsTrigger value="performance">
+            <BarChart4 className="h-4 w-4 mr-2" />
+            Performance
+          </TabsTrigger>
           <TabsTrigger value="feature-tests">
             <CheckCircle2 className="h-4 w-4 mr-2" />
             Feature Tests
           </TabsTrigger>
-          <TabsTrigger value="api-tests">
-            <Database className="h-4 w-4 mr-2" />
-            API Tests
-          </TabsTrigger>
-          <TabsTrigger value="console">
-            <Terminal className="h-4 w-4 mr-2" />
-            Console
-          </TabsTrigger>
           <TabsTrigger value="docs">
             <FileText className="h-4 w-4 mr-2" />
-            Docs
+            Documentation
           </TabsTrigger>
         </TabsList>
+        
+        {/* Feature Implementation Status Dashboard */}
+        <TabsContent value="feature-status" className="mt-4">
+          <FeatureStatusDashboard />
+        </TabsContent>
+        
+        {/* Enhanced Log Viewer */}
+        <TabsContent value="logs" className="mt-4">
+          <EnhancedLogViewer />
+        </TabsContent>
+        
+        {/* Enhanced API Dashboard */}
+        <TabsContent value="api-dashboard" className="mt-4">
+          <EnhancedApiDashboard />
+        </TabsContent>
+        
+        {/* Performance Metrics */}
+        <TabsContent value="performance" className="mt-4">
+          <PerformanceMetricsPanel />
+        </TabsContent>
         
         {/* Feature Tests Tab */}
         <TabsContent value="feature-tests" className="mt-4">
           <FeatureTester />
-        </TabsContent>
-        
-        {/* API Tests Tab */}
-        <TabsContent value="api-tests" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>API Endpoint Tests</CardTitle>
-              <CardDescription>
-                Test and verify the application's API endpoints
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex space-x-2">
-                  <Button 
-                    onClick={runApiTests} 
-                    disabled={isApiTesting}
-                  >
-                    {isApiTesting ? 'Running Tests...' : 'Run API Tests'}
-                  </Button>
-                  
-                  <Button 
-                    variant="outline"
-                    onClick={loadApiTestResults}
-                    disabled={isApiTesting}
-                  >
-                    Load Saved Results
-                  </Button>
-                  
-                  <Button 
-                    variant="outline"
-                    onClick={clearApiTestResults}
-                    disabled={isApiTesting}
-                  >
-                    Clear Results
-                  </Button>
-                </div>
-                
-                {apiTestReport && (
-                  <div className="mt-4">
-                    <ScrollArea className="h-[400px] w-full rounded-md border p-4 bg-gray-900">
-                      <pre className="text-sm text-gray-300 whitespace-pre-wrap">
-                        {apiTestReport}
-                      </pre>
-                    </ScrollArea>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        {/* Console Tab */}
-        <TabsContent value="console" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Debug Console</CardTitle>
-              <CardDescription>
-                View application logs and debug information
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <div className="text-sm text-gray-400">
-                    Displaying {logs.length} log entries
-                  </div>
-                  <div className="flex space-x-2">
-                    <Button variant="outline" size="sm" onClick={loadPersistedLogs}>
-                      Load Saved Logs
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={clearLogs}>
-                      Clear Logs
-                    </Button>
-                  </div>
-                </div>
-                
-                <ScrollArea className="h-[500px] w-full rounded-md border">
-                  <div className="p-2 space-y-2">
-                    {logs.length === 0 ? (
-                      <div className="flex items-center justify-center h-20 text-gray-500">
-                        No logs to display
-                      </div>
-                    ) : (
-                      logs.map((log, index) => (
-                        <Alert
-                          key={index}
-                          variant={
-                            log.level === LogLevel.ERROR ? "destructive" :
-                            log.level === LogLevel.WARN ? "default" :
-                            log.level === LogLevel.INFO ? "default" :
-                            null
-                          }
-                        >
-                          <div className="flex items-center">
-                            {log.level === LogLevel.ERROR ? (
-                              <AlertCircle className="h-4 w-4 mr-2" />
-                            ) : log.level === LogLevel.DEBUG ? (
-                              <Braces className="h-4 w-4 mr-2" />
-                            ) : (
-                              <Terminal className="h-4 w-4 mr-2" />
-                            )}
-                            <AlertTitle className="text-sm">
-                              {LogLevel[log.level]} | {log.area} | {log.timestamp.toLocaleTimeString()}
-                            </AlertTitle>
-                          </div>
-                          <AlertDescription className="text-sm mt-1 font-mono">
-                            {log.message}
-                            {log.data && (
-                              <div className="mt-1 text-xs">
-                                {typeof log.data === 'object' 
-                                  ? JSON.stringify(log.data, null, 2)
-                                  : String(log.data)
-                                }
-                              </div>
-                            )}
-                          </AlertDescription>
-                        </Alert>
-                      ))
-                    )}
-                  </div>
-                </ScrollArea>
-              </div>
-            </CardContent>
-            <CardFooter>
-              <div className="text-xs text-gray-500">
-                The console displays logs from both the application and testing utilities
-              </div>
-            </CardFooter>
-          </Card>
         </TabsContent>
         
         {/* Documentation Tab */}
@@ -351,6 +268,55 @@ const DebugPage: React.FC = () => {
           <MarkdownViewer />
         </TabsContent>
       </Tabs>
+      
+      {/* Legacy Debug Interface - Kept for compatibility */}
+      <div className="mt-8 pt-8 space-y-6">
+        <Separator />
+        
+        <div className="flex justify-between items-center">
+          <h3 className="text-xl font-semibold text-gray-300">Legacy Debug Tools</h3>
+          <Button variant="ghost" size="sm" onClick={() => setActiveTab('feature-tests')}>
+            <ChevronRight className="h-4 w-4 mr-2" />
+            Access Legacy Tools
+          </Button>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card className="bg-slate-900/50">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Console Logs</CardTitle>
+              <CardDescription>View application logs in the enhanced viewer</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button 
+                className="w-full"
+                variant="outline"
+                onClick={() => setActiveTab('logs')}
+              >
+                <Terminal className="h-4 w-4 mr-2" />
+                Open Log Viewer
+              </Button>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-slate-900/50">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">API Testing</CardTitle>
+              <CardDescription>Test API endpoints with advanced dashboard</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button 
+                className="w-full"
+                variant="outline"
+                onClick={() => setActiveTab('api-dashboard')}
+              >
+                <Database className="h-4 w-4 mr-2" />
+                Open API Dashboard
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 };
