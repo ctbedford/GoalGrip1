@@ -301,9 +301,14 @@ export function EnhancedApiDashboard() {
         return;
       }
       
+      // Ensure method is compatible with apiTester
+      const httpMethod = ['GET', 'POST', 'PATCH', 'DELETE'].includes(selectedMethod) 
+        ? selectedMethod as 'GET' | 'POST' | 'PATCH' | 'DELETE'
+        : 'GET';
+        
       const result = await apiTester.testEndpoint(
         selectedEndpoint as ApiEndpoint,
-        selectedMethod as 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
+        httpMethod,
         data
       );
       
@@ -455,8 +460,7 @@ export function EnhancedApiDashboard() {
                     </div>
                     <Progress 
                       value={globalStats.successRate} 
-                      className="h-2 mt-2"
-                      indicator={globalStats.successRate >= 80 ? "success" : "destructive"}
+                      className={`h-2 mt-2 ${globalStats.successRate >= 80 ? "bg-green-500" : "bg-red-500"}`}
                     />
                   </div>
                 </CardContent>
