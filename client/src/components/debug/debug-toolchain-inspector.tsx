@@ -288,21 +288,21 @@ export function DebugToolchainInspector() {
         // Use our API request utility which handles CORS and credentials
         import('@/lib/queryClient').then(async ({ apiRequest }) => {
           try {
-            const response = await apiRequest({
-              method,
-              url: path,
-              data: body ? JSON.parse(body) : undefined,
-              headers,
-            });
+            // apiRequest expects method, url, data as separate parameters
+            const methodStr = typeof method === 'string' ? method : String(method);
+            const bodyData = body ? (typeof body === 'string' ? JSON.parse(body) : body) : undefined;
+            
+            const response = await apiRequest(methodStr, path, bodyData);
+            const responseJson = await response.json();
             
             // Format the response as JSON
-            setCurlResult(JSON.stringify(response, null, 2));
+            setCurlResult(JSON.stringify(responseJson, null, 2));
             
             // Log success
             logger.info(FeatureArea.API, 'Curl command executed successfully', {
               path,
               method,
-              responseSize: JSON.stringify(response).length
+              responseSize: JSON.stringify(responseJson).length
             });
           } catch (error) {
             // Handle API request error
