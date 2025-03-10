@@ -45,25 +45,25 @@ export const ActionItemCard: React.FC<ActionItemProps> = ({ item, icon }) => {
   };
 
   return (
-    <li className="flex items-center p-2 hover:bg-gray-50 rounded-lg">
+    <li className="flex items-center p-2 hover:bg-gray-800 rounded-lg border border-gray-800 mb-2">
       <Checkbox
         checked={isChecked}
         disabled={isUpdating}
         onCheckedChange={handleToggle}
-        className="h-4 w-4 text-primary-600 rounded border-gray-300 mr-3"
+        className="h-4 w-4 text-blue-400 rounded border-gray-600 mr-3"
       />
       <div className="flex-1">
         <p 
           className={cn(
-            "text-sm font-medium text-gray-800",
-            isChecked && "line-through"
+            "text-sm font-medium text-gray-200",
+            isChecked && "line-through text-gray-500"
           )}
         >
           {item.description}
         </p>
-        <p className="text-xs text-gray-500">{item.goalDescription}</p>
+        <p className="text-xs text-gray-400">{item.goalDescription}</p>
       </div>
-      <div className="text-success-500">
+      <div className="text-blue-400">
         {icon}
       </div>
     </li>

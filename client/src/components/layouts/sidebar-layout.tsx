@@ -27,13 +27,13 @@ const SidebarItem = ({ icon: Icon, label, href, active }: SidebarItemProps) => {
       <Link href={href}>
         <div
           className={cn(
-            "flex items-center px-4 py-2 text-gray-700 rounded-lg transition-colors cursor-pointer",
+            "flex items-center px-4 py-2 rounded-lg transition-colors cursor-pointer",
             active 
-              ? "bg-gray-800 text-white"
-              : "hover:bg-gray-800 hover:text-gray-200"
+              ? "bg-blue-900 bg-opacity-60 text-blue-100"
+              : "text-gray-400 hover:bg-gray-800 hover:text-gray-200"
           )}
         >
-          <Icon className={cn("mr-3 h-5 w-5", active ? "text-white" : "text-gray-400")} />
+          <Icon className={cn("mr-3 h-5 w-5", active ? "text-blue-300" : "text-gray-500")} />
           <span>{label}</span>
         </div>
       </Link>
