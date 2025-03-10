@@ -35,6 +35,23 @@
 }
 
 @layer components {
+  /* Glow effects */
+  .shadow-glow {
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+  }
+  
+  .shadow-glow-green {
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.5);
+  }
+  
+  .shadow-glow-purple {
+    box-shadow: 0 0 15px rgba(124, 58, 237, 0.5);
+  }
+  
+  .shadow-glow-amber {
+    box-shadow: 0 0 15px rgba(245, 158, 11, 0.5);
+  }
+  
   /* Card styling */
   .card {
     @apply bg-gray-900 border border-gray-800 shadow-md relative overflow-hidden;
