@@ -200,6 +200,9 @@ const DebugPage: React.FC = () => {
     // Register the debug component tests
     if (typeof registerDebugTests === 'function') {
       registerDebugTests();
+      
+      // Log that debug tests are registered
+      logger.info(FeatureArea.UI, 'Debug component tests registered and implementation marked');
     }
   }, []);
   
