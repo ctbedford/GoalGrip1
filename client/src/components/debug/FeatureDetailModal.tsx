@@ -78,11 +78,32 @@ export function FeatureDetailModal({ isOpen, onClose }: FeatureDetailModalProps)
     
     // Combine, deduplicate by timestamp, and sort
     const combinedLogs = [...allLogs, ...relevantLogs];
-    const uniqueLogs = combinedLogs.filter((log, index, self) => 
-      index === self.findIndex(l => l.timestamp.getTime() === log.timestamp.getTime())
-    );
+    const uniqueLogs = combinedLogs.filter((log, index, self) => {
+      // Check if timestamp exists and is a valid Date object
+      if (!log.timestamp || !(log.timestamp instanceof Date)) {
+        return true; // Keep logs without valid timestamps
+      }
+      
+      return index === self.findIndex(l => {
+        // Check if l.timestamp exists and is a valid Date object
+        if (!l.timestamp || !(l.timestamp instanceof Date)) {
+          return false;
+        }
+        return l.timestamp.getTime() === log.timestamp.getTime();
+      });
+    });
     
-    return uniqueLogs.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+    // Sort logs with valid timestamps
+    return uniqueLogs.sort((a, b) => {
+      if (!a.timestamp) return 1;  // No timestamp goes to end
+      if (!b.timestamp) return -1; // No timestamp goes to end
+      
+      // Ensure they're Date objects
+      const aTime = a.timestamp instanceof Date ? a.timestamp.getTime() : new Date(a.timestamp).getTime();
+      const bTime = b.timestamp instanceof Date ? b.timestamp.getTime() : new Date(b.timestamp).getTime();
+      
+      return bTime - aTime; // Descending order
+    });
   }, [selectedFeature]);
   
   // Get tests specific to this feature

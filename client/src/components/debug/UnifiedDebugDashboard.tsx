@@ -23,7 +23,7 @@ import { cn } from '@/lib/utils';
 import { LogLevel, FeatureArea } from '@/lib/logger';
 import { getFeatureVerificationStatus } from '@/lib/logger';
 import { TestStatus } from '@/lib/featureTester';
-import { getTestResults, runFeatureTest, getRegisteredTests } from '@/lib/featureTester';
+import { getTestResults, runFeatureTest, getRegisteredTests, runAllFeatureTests } from '@/lib/featureTester';
 import * as debugStorage from '@/lib/debugStorage';
 import { getTestResults as getApiTestResults } from '@/lib/apiTester';
 import { FeatureStatusDashboard } from './feature-status-dashboard';
@@ -182,9 +182,7 @@ export function UnifiedDebugDashboard() {
 
   // Function to run all tests
   const handleRunAllTests = async () => {
-    // If already loading, don't run again
-    if (isLoadingTests) return;
-    
+    // Use the original implementation (which was working)
     // Log that all tests are being run
     debugStorage.addLogEntry(
       LogLevel.INFO,
@@ -193,68 +191,14 @@ export function UnifiedDebugDashboard() {
       { timestamp: new Date() }
     );
     
-    // Get all registered tests
-    const allTests = getRegisteredTests();
-    
-    if (allTests.length === 0) {
-      debugStorage.addLogEntry(
-        LogLevel.WARN,
-        FeatureArea.UI,
-        "No tests found to run",
-        { timestamp: new Date() }
-      );
-      return;
-    }
-    
-    // Show notification that tests are running
-    console.log(`Running ${allTests.length} tests...`);
-    
-    // Set loading state
-    setIsLoadingTests(true);
-    
+    // TODO: Implement this in next batch - use existing implementation
+    // Just invoke the runAllFeatureTests function directly
     try {
-      // Run each test sequentially and collect results
-      const results = [];
-      for (const test of allTests) {
-        debugStorage.addLogEntry(
-          LogLevel.INFO,
-          FeatureArea.UI,
-          `Running test: ${test.name}`,
-          { testId: test.id }
-        );
-        
-        const result = await runFeatureTest(test.id);
-        results.push(result);
-        
-        // Log the result
-        debugStorage.addLogEntry(
-          result.status === TestStatus.PASSED ? LogLevel.INFO : LogLevel.ERROR,
-          FeatureArea.UI,
-          `Test result: ${result.name} - ${result.status}`,
-          { testId: test.id, result }
-        );
-      }
-      
-      // Log completion
-      const passedCount = results.filter(r => r.status === TestStatus.PASSED).length;
-      debugStorage.addLogEntry(
-        LogLevel.INFO,
-        FeatureArea.UI,
-        `Completed running all tests. Passed: ${passedCount}/${results.length}`,
-        { results }
-      );
-      
-      console.log(`Completed running all tests. Passed: ${passedCount}/${results.length}`);
-      
+      setIsLoadingTests(true);
+      await runAllFeatureTests();
       // Force a refresh to show updated test results
       setFilters({...filters});
     } catch (error) {
-      debugStorage.addLogEntry(
-        LogLevel.ERROR,
-        FeatureArea.UI,
-        "Error running tests",
-        { error }
-      );
       console.error("Error running tests:", error);
     } finally {
       setIsLoadingTests(false);
