@@ -7,6 +7,7 @@ import Goals from "@/pages/goals";
 import Analytics from "@/pages/analytics";
 import Achievements from "@/pages/achievements";
 import Settings from "@/pages/settings";
+import Debug from "@/pages/debug";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -18,6 +19,7 @@ function Router() {
         <Route path="/analytics" component={Analytics} />
         <Route path="/achievements" component={Achievements} />
         <Route path="/settings" component={Settings} />
+        <Route path="/debug" component={Debug} />
         <Route component={NotFound} />
       </Switch>
     </SidebarLayout>
