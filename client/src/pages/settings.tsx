@@ -23,7 +23,6 @@ import {
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -108,69 +107,69 @@ const SettingsPage: React.FC = () => {
         <Card className="card border border-gray-800 md:col-span-1 h-fit">
           <CardContent className="p-4">
             <div className="space-y-1">
-            <button
-              onClick={() => setActiveTab("profile")}
-              className={`w-full flex items-center justify-start px-3 py-2 rounded text-left ${
-                activeTab === "profile" 
-                  ? "bg-gray-800 text-gray-100" 
-                  : "text-gray-400 hover:bg-gray-800 hover:text-gray-200"
-              }`}
-            >
-              <User className="h-4 w-4 mr-2 text-blue-400" />
-              Profile
-            </button>
-            <button
-              onClick={() => setActiveTab("appearance")}
-              className={`w-full flex items-center justify-start px-3 py-2 rounded text-left ${
-                activeTab === "appearance" 
-                  ? "bg-gray-800 text-gray-100" 
-                  : "text-gray-400 hover:bg-gray-800 hover:text-gray-200"
-              }`}
-            >
-              <PaintBucket className="h-4 w-4 mr-2 text-purple-400" />
-              Appearance
-            </button>
-            <button
-              onClick={() => setActiveTab("notifications")}
-              className={`w-full flex items-center justify-start px-3 py-2 rounded text-left ${
-                activeTab === "notifications" 
-                  ? "bg-gray-800 text-gray-100" 
-                  : "text-gray-400 hover:bg-gray-800 hover:text-gray-200"
-              }`}
-            >
-              <Bell className="h-4 w-4 mr-2 text-amber-400" />
-              Notifications
-            </button>
-            <button
-              onClick={() => setActiveTab("security")}
-              className={`w-full flex items-center justify-start px-3 py-2 rounded text-left ${
-                activeTab === "security" 
-                  ? "bg-gray-800 text-gray-100" 
-                  : "text-gray-400 hover:bg-gray-800 hover:text-gray-200"
-              }`}
-            >
-              <Shield className="h-4 w-4 mr-2 text-green-400" />
-              Security
-            </button>
-            <button
-              onClick={() => setActiveTab("data")}
-              className={`w-full flex items-center justify-start px-3 py-2 rounded text-left ${
-                activeTab === "data" 
-                  ? "bg-gray-800 text-gray-100" 
-                  : "text-gray-400 hover:bg-gray-800 hover:text-gray-200"
-              }`}
-            >
-              <Download className="h-4 w-4 mr-2 text-red-400" />
-              Data Management
-            </button>
-          </div>
+              <button
+                onClick={() => setActiveTab("profile")}
+                className={`w-full flex items-center justify-start px-3 py-2 rounded text-left ${
+                  activeTab === "profile" 
+                    ? "bg-gray-800 text-gray-100" 
+                    : "text-gray-400 hover:bg-gray-800 hover:text-gray-200"
+                }`}
+              >
+                <User className="h-4 w-4 mr-2 text-blue-400" />
+                Profile
+              </button>
+              <button
+                onClick={() => setActiveTab("appearance")}
+                className={`w-full flex items-center justify-start px-3 py-2 rounded text-left ${
+                  activeTab === "appearance" 
+                    ? "bg-gray-800 text-gray-100" 
+                    : "text-gray-400 hover:bg-gray-800 hover:text-gray-200"
+                }`}
+              >
+                <PaintBucket className="h-4 w-4 mr-2 text-purple-400" />
+                Appearance
+              </button>
+              <button
+                onClick={() => setActiveTab("notifications")}
+                className={`w-full flex items-center justify-start px-3 py-2 rounded text-left ${
+                  activeTab === "notifications" 
+                    ? "bg-gray-800 text-gray-100" 
+                    : "text-gray-400 hover:bg-gray-800 hover:text-gray-200"
+                }`}
+              >
+                <Bell className="h-4 w-4 mr-2 text-amber-400" />
+                Notifications
+              </button>
+              <button
+                onClick={() => setActiveTab("security")}
+                className={`w-full flex items-center justify-start px-3 py-2 rounded text-left ${
+                  activeTab === "security" 
+                    ? "bg-gray-800 text-gray-100" 
+                    : "text-gray-400 hover:bg-gray-800 hover:text-gray-200"
+                }`}
+              >
+                <Shield className="h-4 w-4 mr-2 text-green-400" />
+                Security
+              </button>
+              <button
+                onClick={() => setActiveTab("data")}
+                className={`w-full flex items-center justify-start px-3 py-2 rounded text-left ${
+                  activeTab === "data" 
+                    ? "bg-gray-800 text-gray-100" 
+                    : "text-gray-400 hover:bg-gray-800 hover:text-gray-200"
+                }`}
+              >
+                <Download className="h-4 w-4 mr-2 text-red-400" />
+                Data Management
+              </button>
+            </div>
           </CardContent>
         </Card>
         
         {/* Content Area */}
         <div className="md:col-span-3 space-y-6">
           {/* Profile Settings */}
-          <TabsContent value="profile" className={activeTab === "profile" ? "block" : "hidden"}>
+          <div className={activeTab === "profile" ? "block" : "hidden"}>
             <Card className="card border border-gray-800">
               <CardHeader>
                 <CardTitle className="text-lg font-semibold text-gray-100">Profile Information</CardTitle>
@@ -243,10 +242,10 @@ const SettingsPage: React.FC = () => {
                 </Button>
               </CardFooter>
             </Card>
-          </TabsContent>
+          </div>
           
           {/* Appearance Settings */}
-          <TabsContent value="appearance" className={activeTab === "appearance" ? "block" : "hidden"}>
+          <div className={activeTab === "appearance" ? "block" : "hidden"}>
             <Card className="card border border-gray-800">
               <CardHeader>
                 <CardTitle className="text-lg font-semibold text-gray-100">Appearance Settings</CardTitle>
@@ -334,10 +333,10 @@ const SettingsPage: React.FC = () => {
                 </Button>
               </CardFooter>
             </Card>
-          </TabsContent>
+          </div>
           
           {/* Notification Settings */}
-          <TabsContent value="notifications" className={activeTab === "notifications" ? "block" : "hidden"}>
+          <div className={activeTab === "notifications" ? "block" : "hidden"}>
             <Card className="card border border-gray-800">
               <CardHeader>
                 <CardTitle className="text-lg font-semibold text-gray-100">Notification Preferences</CardTitle>
@@ -457,10 +456,10 @@ const SettingsPage: React.FC = () => {
                 </Button>
               </CardFooter>
             </Card>
-          </TabsContent>
+          </div>
           
           {/* Security Settings */}
-          <TabsContent value="security" className={activeTab === "security" ? "block" : "hidden"}>
+          <div className={activeTab === "security" ? "block" : "hidden"}>
             <Card className="card border border-gray-800">
               <CardHeader>
                 <CardTitle className="text-lg font-semibold text-gray-100">Security Settings</CardTitle>
@@ -608,10 +607,10 @@ const SettingsPage: React.FC = () => {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
+          </div>
           
           {/* Data Management Settings */}
-          <TabsContent value="data" className={activeTab === "data" ? "block" : "hidden"}>
+          <div className={activeTab === "data" ? "block" : "hidden"}>
             <Card className="card border border-gray-800">
               <CardHeader>
                 <CardTitle className="text-lg font-semibold text-gray-100">Data Management</CardTitle>
@@ -700,7 +699,7 @@ const SettingsPage: React.FC = () => {
                 </Button>
               </CardFooter>
             </Card>
-          </TabsContent>
+          </div>
         </div>
       </div>
     </div>
