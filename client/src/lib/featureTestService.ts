@@ -15,6 +15,7 @@ import {
 export class FeatureTestService {
   private featureTestMap: FeatureTestMapping = {};
   private testFeatureMap: Map<string, string> = new Map();
+  private featureAreaMap: Map<string, FeatureArea> = new Map();
   private listeners: Array<() => void> = [];
   
   constructor() {
@@ -278,6 +279,32 @@ export class FeatureTestService {
     return () => {
       this.listeners = this.listeners.filter(listener => listener !== callback);
     };
+  }
+  
+  /**
+   * Set feature area mapping
+   */
+  public setFeatureArea(featureName: string, area: FeatureArea): void {
+    this.featureAreaMap.set(featureName, area);
+    
+    // Import logger dynamically to avoid circular dependencies
+    import('./logger').then(loggerModule => {
+      // Update the feature with area information in the core feature registry
+      const features = loggerModule.getFeatureVerificationStatus();
+      if (features[featureName]) {
+        // We can't directly set the area in the feature registry,
+        // so we re-register with the same implementation status
+        const feature = features[featureName];
+        loggerModule.registerFeature(
+          featureName,
+          feature.implemented,
+          feature.tested,
+          `Area updated to ${area}`
+        );
+      }
+    });
+    
+    this.notifyListeners();
   }
   
   /**

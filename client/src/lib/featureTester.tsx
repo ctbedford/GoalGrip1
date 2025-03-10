@@ -152,9 +152,9 @@ export function registerFeatureTest(test: FeatureTest): void {
     // Register the feature with the appropriate area
     logger.registerFeature(
       featureName, 
-      test.area, // FeatureArea is directly compatible
+      true, // Set implemented to true (we'll refine this state later)
       false, // Not tested yet
-      `Feature registered via test: ${test.name}`
+      `Feature registered via test: ${test.name} (Area: ${test.area})`
     );
     
     // Mark the feature as implemented - this helps ensure we have the proper status

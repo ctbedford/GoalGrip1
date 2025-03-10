@@ -163,12 +163,22 @@ export function enhanceFeatureStatus(
   const summary = calculateTestResultSummary(tests);
   const lastTested = summary.lastRun;
   
-  // Ensure implementation status correctly reflects test results
-  // If any test passes, the feature should be marked as implemented
+  // Enhanced implementation status determination
+  // If feature is explicitly marked as implemented, keep that status
+  // Otherwise, derive it from test results
   let implemented = feature.implemented;
-  if (testStatus === 'passed' || testStatus === 'partially_passed') {
+  
+  // A feature with passing tests is definitely implemented
+  if (summary.passed > 0) {
     implemented = true;
   }
+  
+  // Features with partial results might be implemented
+  if (!implemented && testStatus === 'partially_passed') {
+    implemented = true;
+  }
+  
+  // Important: If there are no tests, respect the manual implementation flag
   
   return {
     name: feature.name,
