@@ -690,4 +690,5 @@ export function FeatureStatusDashboard() {
       </Dialog>
     </>
   );
+  );
 }

@@ -12,16 +12,16 @@ This document outlines the implementation approach for consolidating all debug f
 ## Implementation Batches
 
 ### Batch 1: Core Dashboard & Navigation Structure ✅
-- [x] Create UnifiedDebugDashboard.tsx component
-- [x] Implement top-level navigation tabs
-- [x] Structure feature list with expanded details
-- [x] Set up context provider for selected feature
+- [ ] Create UnifiedDebugDashboard.tsx component
+- [ ] Implement top-level navigation tabs
+- [ ] Structure feature list with expanded details
+- [ ] Set up context provider for selected feature
 
-### Batch 2: Feature-Detail Experience ✅
-- [x] Design comprehensive feature detail view
-- [x] Implement tabs: Overview, Implementation, Tests, Run Tests, Logs
-- [x] Create feature context provider to pass selected feature to all components
-- [x] Add feature filtering across all debug sections
+### Batch 2: Feature-Detail Experience 🔄
+- [ ] Design comprehensive feature detail view
+- [ ] Implement tabs: Overview, Implementation, Tests, Run Tests, Logs
+- [ ] Create feature context provider to pass selected feature to all components
+- [ ] Add feature filtering across all debug sections
 
 ### Batch 3: Test Integration 📋
 - [ ] Connect test runner to feature details
@@ -88,16 +88,16 @@ UnifiedDebugDashboard
 ## Progress Tracking
 
 ### Batch 1: Core Dashboard & Navigation Structure
-- [x] Created UnifiedDebugDashboard.tsx
-- [x] Implemented navigation tabs
-- [x] Added feature list with status indicators
-- [x] Implemented feature selection
+- [ ] Created UnifiedDebugDashboard.tsx
+- [ ] Implemented navigation tabs
+- [ ] Added feature list with status indicators
+- [ ] Implemented feature selection
 
 ### Batch 2: Feature-Detail Experience
-- [x] Designed feature detail modal
-- [x] Implemented detail tabs
-- [x] Added feature context provider
-- [x] Implemented filtering across components
+- [ ] Designed feature detail modal
+- [ ] Implemented detail tabs
+- [ ] Added feature context provider
+- [ ] Implemented filtering across components
 
 ### Batch 3: Test Integration
 - [ ] Connected test runner to features
