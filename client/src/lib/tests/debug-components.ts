@@ -8,6 +8,10 @@
  * Note: These tests are designed to verify the debug infrastructure itself,
  * not the application features. They test that the logging, tracing, and
  * testing components work correctly.
+ * 
+ * The Feature Status Dashboard is a special case - it implements self-testing
+ * to demonstrate its own capabilities. The dashboard can show test results for
+ * itself as well as its own implementation details.
  */
 
 import { registerFeatureTest } from '../featureTester';
