@@ -500,10 +500,11 @@ export function FeatureStatusDashboard() {
               </DialogHeader>
               
               <Tabs defaultValue="overview" className="mt-4">
-                <TabsList className="grid w-full grid-cols-4">
+                <TabsList className="grid w-full grid-cols-5">
                   <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="implementation">Implementation</TabsTrigger>
                   <TabsTrigger value="tests">Tests</TabsTrigger>
+                  <TabsTrigger value="run-test">Run Tests</TabsTrigger>
                   <TabsTrigger value="logs">Logs</TabsTrigger>
                 </TabsList>
                 
