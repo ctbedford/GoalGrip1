@@ -221,6 +221,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==== Badges Routes ====
+  app.get('/api/badges', requireAuth, async (req, res) => {
+    try {
+      const userId = req.body.userId;
+      const badges = await storage.getBadgesByUser(userId);
+      res.json(badges);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch badges" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
