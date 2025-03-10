@@ -213,9 +213,9 @@ const DebugPage: React.FC = () => {
                           key={index}
                           variant={
                             log.level === LogLevel.ERROR ? "destructive" :
-                            log.level === LogLevel.WARN ? "warning" :
+                            log.level === LogLevel.WARN ? "default" :
                             log.level === LogLevel.INFO ? "default" :
-                            "outline"
+                            null
                           }
                         >
                           <div className="flex items-center">
