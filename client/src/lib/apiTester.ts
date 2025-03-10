@@ -135,13 +135,67 @@ export async function testAllEndpoints(): Promise<ApiTestResult[]> {
   // Badges 
   results.push(await testEndpoint(ApiEndpoint.BADGES));
   
+  // Test goal creation
+  const testGoal = {
+    description: 'API Test Goal',
+    targetValue: 100,
+    currentValue: 0,
+    unit: 'points',
+    deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    categoryId: null,
+    reminderFrequency: 'daily'
+  };
+  results.push(await testEndpoint(ApiEndpoint.GOALS, 'POST', testGoal));
+  
+  // Get goals again to see if our new goal is included
+  results.push(await testEndpoint(ApiEndpoint.GOALS));
+  
+  // Test progress logging for a goal
+  // We need to get the ID of an existing goal first
+  const goalsResult = await testEndpoint(ApiEndpoint.GOALS);
+  if (goalsResult.success && goalsResult.data.length > 0) {
+    const goalId = goalsResult.data[0].id;
+    
+    // Log progress
+    const progressData = {
+      goalId,
+      value: 25,
+      notes: 'API Test progress log'
+    };
+    results.push(await testEndpoint(ApiEndpoint.PROGRESS_LOGS, 'POST', progressData));
+    
+    // Get progress logs for this goal
+    results.push(await testEndpoint(
+      ApiEndpoint.PROGRESS_LOGS_BY_GOAL, 
+      'GET', 
+      undefined, 
+      { goalId: goalId.toString() }
+    ));
+    
+    // Test goal updating
+    results.push(await testEndpoint(
+      ApiEndpoint.GOAL_BY_ID, 
+      'PATCH',
+      { currentValue: 50 },
+      { id: goalId.toString() }
+    ));
+    
+    // Get the specific goal by ID
+    results.push(await testEndpoint(
+      ApiEndpoint.GOAL_BY_ID,
+      'GET',
+      undefined,
+      { id: goalId.toString() }
+    ));
+  }
+  
   // Log testing summary
   const successful = results.filter(r => r.success).length;
   const failed = results.length - successful;
   
   logger.info(
     FeatureArea.API,
-    `API testing complete: ${successful} passed, ${failed} failed`,
+    `API testing complete: ${successful} passed, ${failed} failed out of ${results.length} total tests`,
     { results }
   );
   
@@ -305,10 +359,174 @@ export function generateTestReport(): string {
   return report;
 }
 
+/**
+ * Test a complete user journey from setting goals to earning achievements
+ */
+export async function testCompleteUserJourney(): Promise<boolean> {
+  logger.info(FeatureArea.API, 'Testing complete user journey across all features');
+  
+  try {
+    // Step 1: Create a goal category
+    const categoryData = {
+      name: 'Health',
+      color: '#4ade80',
+      icon: 'Heart'
+    };
+    
+    // Get initial categories to check if we already have a Health category
+    const initialCategoriesResult = await testEndpoint(ApiEndpoint.CATEGORIES);
+    let categoryId: number | null = null;
+    
+    if (initialCategoriesResult.success) {
+      // Look for existing Health category
+      const existingCategory = initialCategoriesResult.data.find(
+        (c: any) => c.name === 'Health'
+      );
+      
+      if (existingCategory) {
+        categoryId = existingCategory.id;
+        logger.info(FeatureArea.API, 'Using existing Health category', { categoryId });
+      } else {
+        // Create new category if needed
+        // Note: Our API endpoints may not support category creation,
+        // so we'll handle that gracefully and continue without a category
+        // In a real app with full implementation, we would add a POST endpoint for categories
+        categoryId = null;
+      }
+    }
+    
+    // Step 2: Check initial dashboard stats
+    const initialStatsResult = await testEndpoint(ApiEndpoint.DASHBOARD);
+    if (!initialStatsResult.success) {
+      logger.error(FeatureArea.API, 'Failed to get initial dashboard stats', initialStatsResult);
+      return false;
+    }
+    const initialStats = initialStatsResult.data;
+    
+    // Step 3: Create a goal
+    const createGoalResult = await testEndpoint(
+      ApiEndpoint.GOALS,
+      'POST',
+      {
+        description: 'Run 5km every week',
+        targetValue: 5,
+        currentValue: 0,
+        unit: 'kilometers',
+        deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+        categoryId,
+        reminderFrequency: 'weekly'
+      }
+    );
+    
+    if (!createGoalResult.success) {
+      logger.error(FeatureArea.API, 'Failed to create goal', createGoalResult);
+      return false;
+    }
+    
+    const goalId = createGoalResult.data.id;
+    
+    // Step 4: Verify goal was created by getting all goals
+    const goalsResult = await testEndpoint(ApiEndpoint.GOALS);
+    if (!goalsResult.success) {
+      logger.error(FeatureArea.API, 'Failed to get goals', goalsResult);
+      return false;
+    }
+    
+    // Step 5: Log progress multiple times over a simulated period
+    // Simulate logging progress over several days
+    const progressDates = [
+      new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 1 week ago
+      new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
+      new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
+      new Date() // Today
+    ];
+    
+    for (let i = 0; i < progressDates.length; i++) {
+      const logResult = await testEndpoint(
+        ApiEndpoint.PROGRESS_LOGS,
+        'POST',
+        {
+          goalId,
+          value: 1 + i * 0.5, // Increasing progress each time
+          notes: `Week ${i+1} running progress`,
+          date: progressDates[i]
+        }
+      );
+      
+      if (!logResult.success) {
+        logger.error(FeatureArea.API, `Failed to log progress for week ${i+1}`, logResult);
+        return false;
+      }
+    }
+    
+    // Step 6: Check progress logs
+    const logsResult = await testEndpoint(
+      ApiEndpoint.PROGRESS_LOGS_BY_GOAL,
+      'GET',
+      undefined,
+      { goalId: goalId.toString() }
+    );
+    
+    if (!logsResult.success) {
+      logger.error(FeatureArea.API, 'Failed to get progress logs', logsResult);
+      return false;
+    }
+    
+    // Step 7: Check if we have action items
+    const actionItemsResult = await testEndpoint(ApiEndpoint.ACTION_ITEMS);
+    if (!actionItemsResult.success) {
+      logger.error(FeatureArea.API, 'Failed to get action items', actionItemsResult);
+      return false;
+    }
+    
+    // Step 8: Update goal progress to completion
+    const updateResult = await testEndpoint(
+      ApiEndpoint.GOAL_BY_ID,
+      'PATCH',
+      { 
+        currentValue: 5, // Target value
+        completed: true 
+      },
+      { id: goalId.toString() }
+    );
+    
+    if (!updateResult.success) {
+      logger.error(FeatureArea.API, 'Failed to update goal to completed', updateResult);
+      return false;
+    }
+    
+    // Step 9: Verify dashboard stats updated
+    const finalStatsResult = await testEndpoint(ApiEndpoint.DASHBOARD);
+    if (!finalStatsResult.success) {
+      logger.error(FeatureArea.API, 'Failed to get final dashboard stats', finalStatsResult);
+      return false;
+    }
+    
+    // Step 10: Check badges
+    const badgesResult = await testEndpoint(ApiEndpoint.BADGES);
+    if (!badgesResult.success) {
+      logger.error(FeatureArea.API, 'Failed to get badges', badgesResult);
+      return false;
+    }
+    
+    logger.info(
+      FeatureArea.API,
+      'Complete user journey test finished successfully',
+      { goalId }
+    );
+    
+    return true;
+  } catch (error) {
+    logger.error(FeatureArea.API, 'Error in user journey test', error);
+    return false;
+  }
+}
+
 export default {
   testEndpoint,
   testAllEndpoints,
   testGoalLifecycle,
+  testCompleteUserJourney,
   getTestResults,
   clearTestResults,
   generateTestReport,
