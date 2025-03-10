@@ -1,376 +1,211 @@
-# API Testing Guide for GOAL:SYNC
+# API Testing Documentation for GOAL:SYNC
 
-This guide provides detailed examples for testing the GOAL:SYNC API, including common request patterns, expected responses, and troubleshooting tips.
+This document outlines the API testing infrastructure and best practices for the GOAL:SYNC application.
 
-## Table of Contents
-- [API Testing Tools](#api-testing-tools)
-- [Authentication](#authentication)
-- [Testing User Operations](#testing-user-operations)
-- [Testing Goal Operations](#testing-goal-operations)
-- [Testing Progress Operations](#testing-progress-operations)
-- [Testing Action Items](#testing-action-items)
-- [Common Validation Errors](#common-validation-errors)
-- [Troubleshooting](#troubleshooting)
+## Overview
 
-## API Testing Tools
+The API testing framework in GOAL:SYNC provides comprehensive tools for verifying API functionality, performance, and reliability. The framework is designed to:
 
-GOAL:SYNC provides built-in API testing utilities in `client/src/lib/apiTester.ts`:
+1. Verify all API endpoints function correctly
+2. Validate response formats and data integrity
+3. Test API behavior with different inputs
+4. Monitor performance and detect issues
+
+## Core Components
+
+### API Testing Utility (`apiTester.ts`)
+
+The API testing utility provides functions for testing API endpoints, including:
+
+- **Individual endpoint testing**: Test specific endpoints with custom parameters
+- **Full API test suite**: Run tests on all critical endpoints
+- **User journey testing**: Test complete workflows across multiple endpoints
+- **Performance monitoring**: Track API response times and reliability
+
+### API Dashboard (`enhanced-api-dashboard.tsx`)
+
+The API Dashboard visualizes test results and provides:
+
+- **Test result visualization**: View success/failure status for all endpoints
+- **Performance metrics**: Track response times and success rates
+- **Request/response inspection**: Examine detailed request and response data
+- **Error analysis**: Analyze API errors with detailed context
+
+### Integration with Enhanced Logging
+
+API tests are integrated with the enhanced logging system to provide:
+
+- **Context correlation**: Link API tests with execution contexts
+- **Detailed tracing**: Trace API calls through the system
+- **Error correlation**: Correlate API errors with system logs
+
+## Available API Endpoints
 
 ```typescript
-import { 
-  testEndpoint,
-  ApiEndpoint,
-  testAllEndpoints,
-  testGoalLifecycle
-} from '@/lib/apiTester';
-```
-
-You can also use external tools like cURL, Postman, or Insomnia.
-
-## Authentication
-
-For the current MVP, authentication is simulated with a default `userId` of 1. The `requireAuth` middleware automatically adds this to protected routes.
-
-When using external tools, add `userId: 1` to your request body for endpoints that require authentication.
-
-## Testing User Operations
-
-### Create a New User
-
-#### Using apiTester:
-
-```typescript
-const result = await testEndpoint({
-  endpoint: ApiEndpoint.USERS,
-  method: 'POST',
-  data: {
-    username: "testuser",
-    name: "Test User"
-  }
-});
-```
-
-#### Using cURL:
-
-```bash
-curl -X POST http://localhost:3000/api/users \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "testuser",
-    "name": "Test User"
-  }'
-```
-
-#### Expected Response:
-
-```json
-{
-  "id": 1,
-  "username": "testuser",
-  "name": "Test User",
-  "points": 0,
-  "level": 1
+export enum ApiEndpoint {
+  USERS = '/api/users',
+  DASHBOARD = '/api/dashboard/stats',
+  GOALS = '/api/goals',
+  GOAL_BY_ID = '/api/goals/:id',
+  CATEGORIES = '/api/categories',
+  PROGRESS_LOGS = '/api/progress-logs',
+  PROGRESS_LOGS_BY_GOAL = '/api/progress-logs/:goalId',
+  ACTION_ITEMS = '/api/action-items',
+  BADGES = '/api/badges',
 }
 ```
 
-## Testing Goal Operations
+## Testing Functions
 
-### Get All Goals
-
-#### Using apiTester:
+### Test Single Endpoint
 
 ```typescript
 const result = await testEndpoint({
   endpoint: ApiEndpoint.GOALS,
-  method: 'GET'
-});
-```
-
-#### Using cURL:
-
-```bash
-curl -X GET http://localhost:3000/api/goals
-```
-
-### Create a Goal
-
-#### Using apiTester:
-
-```typescript
-const result = await testEndpoint({
-  endpoint: ApiEndpoint.GOALS,
-  method: 'POST',
-  data: {
-    description: "Complete project documentation",
-    targetValue: 100,
-    unit: "percent",
-    deadline: new Date().toISOString(),
-    categoryId: 0,
-    reminderFrequency: "weekly"
+  method: 'GET',
+  data: null,  // Optional request body
+  params: {},  // Optional URL parameters
+  expectedStatus: 200,
+  validateResponse: (data) => {
+    // Optional validation function
+    return data && Array.isArray(data);
   }
 });
 ```
 
-#### Using cURL:
-
-```bash
-curl -X POST http://localhost:3000/api/goals \
-  -H "Content-Type: application/json" \
-  -d '{
-    "description": "Complete project documentation",
-    "targetValue": 100,
-    "unit": "percent",
-    "deadline": "2025-04-07T00:00:00.000Z",
-    "categoryId": 0,
-    "reminderFrequency": "weekly"
-  }'
-```
-
-#### Expected Response:
-
-```json
-{
-  "id": 1,
-  "userId": 1,
-  "description": "Complete project documentation",
-  "targetValue": 100,
-  "currentValue": 0,
-  "unit": "percent",
-  "deadline": "2025-04-07T00:00:00.000Z",
-  "categoryId": 0,
-  "reminderFrequency": "weekly",
-  "completed": false,
-  "createdAt": "2025-03-10T05:18:24.696Z"
-}
-```
-
-### Update a Goal
-
-#### Using apiTester:
-
-```typescript
-const result = await testEndpoint({
-  endpoint: `${ApiEndpoint.GOAL_BY_ID.replace(':id', '1')}`,
-  method: 'PATCH',
-  data: {
-    currentValue: 50
-  }
-});
-```
-
-#### Using cURL:
-
-```bash
-curl -X PATCH http://localhost:3000/api/goals/1 \
-  -H "Content-Type: application/json" \
-  -d '{
-    "currentValue": 50
-  }'
-```
-
-## Testing Progress Operations
-
-### Log Progress for a Goal
-
-#### Using apiTester:
-
-```typescript
-const result = await testEndpoint({
-  endpoint: ApiEndpoint.PROGRESS_LOGS,
-  method: 'POST',
-  data: {
-    goalId: 1,
-    value: 25,
-    notes: "Made good progress today"
-  }
-});
-```
-
-#### Using cURL:
-
-```bash
-curl -X POST http://localhost:3000/api/progress \
-  -H "Content-Type: application/json" \
-  -d '{
-    "goalId": 1,
-    "value": 25,
-    "notes": "Made good progress today"
-  }'
-```
-
-#### Expected Response:
-
-```json
-{
-  "id": 1,
-  "goalId": 1,
-  "value": 25,
-  "notes": "Made good progress today",
-  "createdAt": "2025-03-10T05:20:34.696Z"
-}
-```
-
-### Get Progress for a Goal
-
-#### Using apiTester:
-
-```typescript
-const result = await testEndpoint({
-  endpoint: ApiEndpoint.PROGRESS_LOGS_BY_GOAL.replace(':goalId', '1'),
-  method: 'GET'
-});
-```
-
-#### Using cURL:
-
-```bash
-curl -X GET http://localhost:3000/api/goals/1/progress
-```
-
-## Testing Action Items
-
-### Get Action Items
-
-#### Using apiTester:
-
-```typescript
-const result = await testEndpoint({
-  endpoint: ApiEndpoint.ACTION_ITEMS,
-  method: 'GET'
-});
-```
-
-#### Using cURL:
-
-```bash
-curl -X GET http://localhost:3000/api/action-items
-```
-
-### Update an Action Item
-
-#### Using apiTester:
-
-```typescript
-const result = await testEndpoint({
-  endpoint: `${ApiEndpoint.ACTION_ITEMS}/1`,
-  method: 'PATCH',
-  data: {
-    completed: true
-  }
-});
-```
-
-#### Using cURL:
-
-```bash
-curl -X PATCH http://localhost:3000/api/action-items/1 \
-  -H "Content-Type: application/json" \
-  -d '{
-    "completed": true
-  }'
-```
-
-## Common Validation Errors
-
-### Invalid Date Format
-
-**Error:**
-```json
-{
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Invalid date format in deadline",
-    "details": [
-      {
-        "field": "deadline",
-        "expected": "ISO8601 date string",
-        "received": "2025-04-07",
-        "constraint": "format: YYYY-MM-DDTHH:mm:ss.sssZ"
-      }
-    ]
-  }
-}
-```
-
-**Solution:** Always use ISO string format with `new Date().toISOString()` or explicit ISO format like `2025-04-07T00:00:00.000Z`.
-
-### Invalid Category ID
-
-**Error:**
-```json
-{
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Invalid category ID",
-    "details": [
-      {
-        "field": "categoryId",
-        "expected": "number",
-        "received": "null",
-        "constraint": "must be numeric"
-      }
-    ]
-  }
-}
-```
-
-**Solution:** Use `0` for no category, not `null`.
-
-### Missing Required Fields
-
-**Error:**
-```json
-{
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Required fields missing",
-    "details": [
-      {
-        "field": "description",
-        "expected": "string",
-        "received": "undefined",
-        "constraint": "required field"
-      }
-    ]
-  }
-}
-```
-
-**Solution:** Ensure all required fields are included in the request.
-
-## Troubleshooting
-
-### Testing the Full API
-
-To run a comprehensive test of all API endpoints, use:
+### Test All Endpoints
 
 ```typescript
 const results = await testAllEndpoints();
-console.log(results);
+console.log(`${results.filter(r => r.success).length} of ${results.length} tests passed`);
 ```
 
-### Testing the Goal Lifecycle
-
-To test the complete goal lifecycle (create, update, log progress, complete):
+### Test Goal Lifecycle
 
 ```typescript
 const success = await testGoalLifecycle();
-console.log(success ? "Goal lifecycle test passed" : "Goal lifecycle test failed");
+// Tests goal creation, updating, progress tracking, and deletion
 ```
 
-### Debugging Network Issues
+### Test Complete User Journey
 
-If you're experiencing connection issues:
+```typescript
+const success = await testCompleteUserJourney();
+// Tests a complete user journey from goal creation to achievement earning
+```
 
-1. Check that the server is running (`npm run dev`)
-2. Verify the endpoint URL is correct
-3. Check browser console for CORS errors
-4. Use the Network tab in browser DevTools to inspect request/response
+## Test Result Structure
 
-### Common Fixes for API Errors
+```typescript
+export interface ApiTestResult {
+  endpoint: string;
+  method: string;
+  status: number;
+  success: boolean;
+  data: any;
+  error?: any;
+  duration: number;
+  timestamp: Date;
+}
+```
 
-1. **Date Formatting**: Always use `new Date().toISOString()` for date fields
-2. **ID Fields**: Use numeric IDs (e.g., `0` for no category, not `null`)
-3. **Missing UserID**: Include `userId: 1` in test requests if using external tools
-4. **Invalid JSON**: Double-check that your JSON is properly formatted (no trailing commas)
-5. **Query Parameters**: URL encode query parameters
+## Best Practices
+
+### 1. Test Data Management
+
+- **Use predictable test data**: Use consistent naming patterns for test data
+- **Clean up after tests**: Delete test data after tests complete
+- **Avoid ID collisions**: Use unique identifiers for test resources
+
+### 2. Test Organization
+
+- **Group related tests**: Organize tests by feature or resource type
+- **Test dependencies**: Handle dependencies between tests appropriately
+- **Isolate tests**: Ensure tests can run independently when possible
+
+### 3. Response Validation
+
+- **Validate structure**: Check response structure against expected schema
+- **Validate data types**: Ensure fields have correct data types
+- **Validate business rules**: Verify business logic is correctly applied
+
+### 4. Error Testing
+
+- **Test error cases**: Verify API returns appropriate errors
+- **Test validation**: Verify validation rules are enforced
+- **Test edge cases**: Test boundary conditions and edge cases
+
+### 5. Performance Testing
+
+- **Monitor response times**: Track and analyze response times
+- **Test under load**: Test API behavior under increased load
+- **Test resource usage**: Monitor resource usage during tests
+
+## Example: Testing Goal Creation
+
+```typescript
+// Test goal creation
+const goalData = {
+  description: "Test Goal",
+  targetValue: 100,
+  currentValue: 0,
+  deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+  categoryId: 1
+};
+
+const result = await testEndpoint({
+  endpoint: ApiEndpoint.GOALS,
+  method: 'POST',
+  data: goalData,
+  expectedStatus: 201,
+  validateResponse: (data) => {
+    return data && 
+           data.description === goalData.description &&
+           data.id !== undefined;
+  }
+});
+
+console.log(`Goal creation test ${result.success ? 'passed' : 'failed'}`);
+```
+
+## Advanced Usage
+
+### Generating Test Reports
+
+```typescript
+const report = generateTestReport();
+console.log(report);
+```
+
+### Integrating with CI/CD
+
+The API testing framework can be integrated with CI/CD pipelines to:
+
+1. Run tests automatically on code changes
+2. Block deployments if tests fail
+3. Generate test reports for review
+
+### Custom Test Extensions
+
+Extend the testing framework for specific needs:
+
+```typescript
+// Add a custom test for a specific feature
+export async function testCustomFeature(): Promise<boolean> {
+  const contextId = enhancedLogger.createContext('api', 'custom-feature-test').id;
+  
+  try {
+    // Custom test implementation
+    enhancedLogger.logStep(contextId, 'Testing custom feature', LogLevel.INFO);
+    
+    // Test implementation...
+    
+    enhancedLogger.completeContext(contextId, true);
+    return true;
+  } catch (error) {
+    enhancedLogger.logStep(contextId, `Test failed: ${error}`, LogLevel.ERROR);
+    enhancedLogger.completeContext(contextId, false, { error });
+    return false;
+  }
+}
+```
