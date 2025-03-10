@@ -18,6 +18,7 @@ import {
   internalError, 
   errorMiddleware 
 } from "./errorHandler";
+import debugApiRouter from "./routes/debug-api";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Middleware to check authentication

@@ -2,12 +2,19 @@ import { Request, Response, Router } from 'express';
 import { ErrorCode } from '../errorHandler';
 import { storage } from '../storage';
 import z from 'zod';
-import logger, { FeatureArea, LogLevel, getFeatureVerificationStatus } from '../../client/src/lib/logger';
+import * as loggerModule from '../../client/src/lib/logger';
 import * as apiTester from '../../client/src/lib/apiTester';
 import * as featureTester from '../../client/src/lib/featureTester';
 import * as debugStorage from '../../client/src/lib/debugStorage';
 import * as enhancedLogger from '../../client/src/lib/enhancedLogger';
 import { featureTestService } from '../../client/src/lib/featureTestService';
+
+// Extract utilities from logger module
+const { 
+  debug, info, warn, error, registerFeature, 
+  markFeatureImplemented, markFeatureTested, getFeatureVerificationStatus,
+  FeatureArea, LogLevel 
+} = loggerModule;
 
 const router = Router();
 
