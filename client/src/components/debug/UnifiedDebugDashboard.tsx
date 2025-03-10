@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useMemo } from 'react';
+import React, { createContext, useState, useContext, useMemo, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,11 +8,13 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FeatureArea, LogLevel } from '@/lib/logger';
-import { TestStatus } from '@/lib/featureTester';
+import logger, { FeatureArea, LogLevel } from '@/lib/logger';
+import { TestStatus, FeatureTestResult } from '@/lib/featureTester';
 import { runFeatureTest, runAllFeatureTests } from '@/lib/featureTester';
 import { useFeatureTests } from '@/hooks/use-feature-tests';
 import { createContext as createLoggingContext, completeContext } from '@/lib/enhancedLogger';
+import { featureTestService } from '@/lib/featureTestService';
+import { useToast } from '@/hooks/use-toast';
 import { 
   EnhancedFeatureStatus, 
   FeatureTestInfo, 
@@ -71,12 +73,25 @@ export function UnifiedDebugDashboard() {
   const [selectedTab, setSelectedTab] = useState('features');
   const [isTestRunning, setIsTestRunning] = useState<Record<string, boolean>>({});
   const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [filters, setFilters] = useState<FilterState>({
     area: 'all',
     implementationStatus: 'all',
     testStatus: 'all',
     searchQuery: ''
   });
+  
+  // Add an effect to refresh data when the refresh trigger changes
+  useEffect(() => {
+    // This will force a re-fetch of the features data
+    if (refreshTrigger > 0) {
+      // Using a small timeout to ensure the UI updates properly
+      const timer = setTimeout(() => {
+        // The useFeatureTests hook will automatically refresh when featureTestService changes
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [refreshTrigger]);
 
   const openFeatureDetail = (feature: EnhancedFeatureStatus) => {
     setSelectedFeature(feature);
@@ -124,7 +139,19 @@ export function UnifiedDebugDashboard() {
     const contextId = createLoggingContext('Feature Test', testId);
     
     try {
-      await runFeatureTest(testId);
+      const result = await runFeatureTest(testId);
+      
+      // Update the feature test service
+      featureTestService.updateFeatureTestStatus([testId]);
+      
+      // Force a refresh of the feature data
+      setRefreshTrigger(prev => prev + 1);
+      
+      logger.info(FeatureArea.UI, `Test completed: ${testId}`, {
+        status: result.status,
+        duration: result.duration,
+        error: result.error
+      });
     } finally {
       if (typeof contextId === 'string') completeContext(contextId, true);
       setIsTestRunning(prev => ({ ...prev, [testId]: false }));
@@ -146,10 +173,27 @@ export function UnifiedDebugDashboard() {
     const contextId = createLoggingContext('Feature Tests', featureName);
     
     try {
+      // Track test results
+      const results: FeatureTestResult[] = [];
+      
       // Run each test in sequence
       for (const test of tests) {
-        await runFeatureTest(test.id);
+        const result = await runFeatureTest(test.id);
+        results.push(result);
       }
+      
+      // Update the feature test service with all test IDs that were run
+      featureTestService.updateFeatureTestStatus(results.map(result => result.id));
+      
+      // Force a refresh of the feature data
+      setRefreshTrigger(prev => prev + 1);
+      
+      logger.info(FeatureArea.UI, `Completed running tests for ${featureName}: ${results.length} tests executed`, {
+        feature: featureName,
+        passed: results.filter(r => r.status === TestStatus.PASSED).length,
+        failed: results.filter(r => r.status === TestStatus.FAILED).length,
+        skipped: results.filter(r => r.status === TestStatus.SKIPPED).length
+      });
     } finally {
       if (typeof contextId === 'string') completeContext(contextId, true);
       
