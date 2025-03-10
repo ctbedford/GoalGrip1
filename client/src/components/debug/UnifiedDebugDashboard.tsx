@@ -1,38 +1,691 @@
-import React, { useState, createContext, useContext, useMemo } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
-  ChevronRight, 
-  CheckCircle2, 
-  XCircle, 
-  Search, 
-  LayoutDashboard, 
-  FileText, 
-  Activity, 
-  Terminal, 
-  Code, 
-  Play, 
-  RefreshCw,
-  Filter
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { LogLevel, FeatureArea } from '@/lib/logger';
-import { getFeatureVerificationStatus } from '@/lib/logger';
+import React, { createContext, useState, useContext, useMemo } from 'react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FeatureArea, LogLevel } from '@/lib/logger';
 import { TestStatus } from '@/lib/featureTester';
-import { getTestResults, runFeatureTest, getRegisteredTests } from '@/lib/featureTester';
-import * as debugStorage from '@/lib/debugStorage';
-import { getTestResults as getApiTestResults } from '@/lib/apiTester';
-import { FeatureStatusDashboard } from './feature-status-dashboard';
-import { EnhancedLogViewer } from './enhanced-log-viewer';
-import { EnhancedApiDashboard } from './enhanced-api-dashboard';
-import { PerformanceMetricsPanel } from './performance-metrics-panel';
-import { FeatureDetailModal } from './FeatureDetailModal';
+import { runFeatureTest, runAllFeatureTests } from '@/lib/featureTester';
+import { useFeatureTests } from '@/hooks/use-feature-tests';
+import { createContext as createLoggingContext, completeContext } from '@/lib/enhancedLogger';
+import { 
+  EnhancedFeatureStatus, 
+  FeatureTestInfo, 
+  TestResultSummary
+} from '@/lib/types/featureTypes';
+import { 
+  CheckCircle2 as LuCheckCircle2, 
+  XCircle as LuXCircle, 
+  AlertCircle as LuAlertCircle, 
+  Clock as LuClock, 
+  SlidersHorizontal as LuSlidersHorizontal,
+  BarChart as LuBarChart, 
+  Code as LuCode, 
+  FileCog as LuFileCog, 
+  FilePlus as LuFilePlus, 
+  Filter as LuFilter, 
+  Info as LuInfo, 
+  LifeBuoy as LuLifeBuoy,
+  Layout as LuLayout, 
+  PieChart as LuPieChart, 
+  Play as LuPlay, 
+  RefreshCw as LuRefreshCw, 
+  Search as LuSearch, 
+  Settings as LuSettings, 
+  Smartphone as LuSmartphone 
+} from 'lucide-react';
 
-// Feature context to share selected feature across components
+// Feature context for sharing selected feature state across components
+interface FeatureContextType {
+  selectedFeature: EnhancedFeatureStatus | null;
+  selectFeature: (feature: EnhancedFeatureStatus | null) => void;
+  selectedTab: string;
+  setSelectedTab: (tab: string) => void;
+}
+
+const FeatureContext = createContext<FeatureContextType>({
+  selectedFeature: null,
+  selectFeature: () => {},
+  selectedTab: 'features',
+  setSelectedTab: () => {}
+});
+
+export const useFeatureContext = () => useContext(FeatureContext);
+
+// Filter state for filtering features
+interface FilterState {
+  area: FeatureArea | 'all';
+  implementationStatus: 'all' | 'implemented' | 'not-implemented';
+  testStatus: 'all' | 'tested' | 'not-tested';
+  searchQuery: string;
+}
+
+export function UnifiedDebugDashboard() {
+  const { features, isLoading, getFeatureTests, getFeatureTestSummary, overallStats } = useFeatureTests();
+  const [selectedFeature, setSelectedFeature] = useState<EnhancedFeatureStatus | null>(null);
+  const [selectedTab, setSelectedTab] = useState('features');
+  const [isTestRunning, setIsTestRunning] = useState<Record<string, boolean>>({});
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [filters, setFilters] = useState<FilterState>({
+    area: 'all',
+    implementationStatus: 'all',
+    testStatus: 'all',
+    searchQuery: ''
+  });
+
+  const openFeatureDetail = (feature: EnhancedFeatureStatus) => {
+    setSelectedFeature(feature);
+    setDetailModalOpen(true);
+  };
+
+  // Apply filters to features
+  const filteredFeatures = useMemo(() => {
+    return features.filter(feature => {
+      // Apply area filter
+      if (filters.area !== 'all' && feature.area !== filters.area) {
+        return false;
+      }
+      
+      // Apply implementation status filter
+      if (filters.implementationStatus === 'implemented' && !feature.implemented) {
+        return false;
+      }
+      if (filters.implementationStatus === 'not-implemented' && feature.implemented) {
+        return false;
+      }
+      
+      // Apply test status filter
+      if (filters.testStatus === 'tested' && feature.testStatus === 'not_tested') {
+        return false;
+      }
+      if (filters.testStatus === 'not-tested' && feature.testStatus !== 'not_tested') {
+        return false;
+      }
+      
+      // Apply search query
+      if (filters.searchQuery && !feature.name.toLowerCase().includes(filters.searchQuery.toLowerCase())) {
+        return false;
+      }
+      
+      return true;
+    });
+  }, [features, filters]);
+
+  // Run a feature test
+  const handleRunTest = async (testId: string) => {
+    if (isTestRunning[testId]) return;
+    
+    setIsTestRunning(prev => ({ ...prev, [testId]: true }));
+    const contextId = createLoggingContext('Feature Test', testId);
+    
+    try {
+      await runFeatureTest(testId);
+    } finally {
+      completeContext(contextId, 'success');
+      setIsTestRunning(prev => ({ ...prev, [testId]: false }));
+    }
+  };
+
+  // Run all tests for a feature
+  const handleRunFeatureTests = async (featureName: string) => {
+    const tests = getFeatureTests(featureName);
+    if (!tests.length) return;
+    
+    // Mark all as running
+    const newRunningState: Record<string, boolean> = {};
+    tests.forEach(test => {
+      newRunningState[test.id] = true;
+    });
+    setIsTestRunning(prev => ({ ...prev, ...newRunningState }));
+    
+    const contextId = createLoggingContext('Feature Tests', featureName);
+    
+    try {
+      // Run each test in sequence
+      for (const test of tests) {
+        await runFeatureTest(test.id);
+      }
+    } finally {
+      completeContext(contextId, 'success');
+      
+      // Mark all as not running
+      const completedState: Record<string, boolean> = {};
+      tests.forEach(test => {
+        completedState[test.id] = false;
+      });
+      setIsTestRunning(prev => ({ ...prev, ...completedState }));
+    }
+  };
+
+  // Run all tests
+  const handleRunAllTests = async () => {
+    const contextId = createLoggingContext('All Feature Tests', 'global');
+    
+    try {
+      await runAllFeatureTests();
+    } finally {
+      completeContext(contextId, 'success');
+    }
+  };
+
+  // Context value
+  const contextValue = {
+    selectedFeature,
+    selectFeature: setSelectedFeature,
+    selectedTab,
+    setSelectedTab
+  };
+
+  return (
+    <FeatureContext.Provider value={contextValue}>
+      <div className="flex flex-col h-full bg-background rounded-lg shadow-md">
+        <div className="p-4 border-b">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-2xl font-bold">Unified Debug Dashboard</h1>
+              <p className="text-muted-foreground">Integrated feature status and test management</p>
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                onClick={handleRunAllTests}
+                className="flex items-center gap-1"
+              >
+                <LuPlay className="h-4 w-4" />
+                Run All Tests
+              </Button>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Total Features</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{overallStats.totalFeatures}</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {overallStats.implemented} implemented, {overallStats.notImplemented} not implemented
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Tests Passed</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-500">{overallStats.fullyTested}</div>
+                <Progress 
+                  value={overallStats.totalFeatures > 0 ? (overallStats.fullyTested / overallStats.totalFeatures) * 100 : 0} 
+                  className="h-2 mt-2" 
+                />
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Tests Failed</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-red-500">{overallStats.failed}</div>
+                <Progress 
+                  value={overallStats.totalFeatures > 0 ? (overallStats.failed / overallStats.totalFeatures) * 100 : 0}
+                  className="h-2 mt-2 bg-red-200" 
+                  indicatorClassName="bg-red-500"
+                />
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Not Tested</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-yellow-500">{overallStats.notTested}</div>
+                <Progress 
+                  value={overallStats.totalFeatures > 0 ? (overallStats.notTested / overallStats.totalFeatures) * 100 : 0}
+                  className="h-2 mt-2 bg-yellow-200" 
+                  indicatorClassName="bg-yellow-500"
+                />
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+        
+        <div className="p-4 flex gap-2 border-b">
+          <div className="flex-1">
+            <Input
+              placeholder="Search features..."
+              value={filters.searchQuery}
+              onChange={(e) => setFilters({ ...filters, searchQuery: e.target.value })}
+              className="w-full"
+            />
+          </div>
+          
+          <Select value={filters.area} onValueChange={(value) => setFilters({ ...filters, area: value as FeatureArea | 'all' })}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select Area" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Areas</SelectItem>
+              {Object.values(FeatureArea).map((area) => (
+                <SelectItem key={area} value={area}>{area}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          
+          <Select value={filters.implementationStatus} onValueChange={(value) => setFilters({ ...filters, implementationStatus: value as any })}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Implementation Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="implemented">Implemented</SelectItem>
+              <SelectItem value="not-implemented">Not Implemented</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          <Select value={filters.testStatus} onValueChange={(value) => setFilters({ ...filters, testStatus: value as any })}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Test Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="tested">Tested</SelectItem>
+              <SelectItem value="not-tested">Not Tested</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        
+        <div className="flex-1 p-4 overflow-hidden">
+          <Tabs defaultValue="features" value={selectedTab} onValueChange={setSelectedTab} className="h-full">
+            <TabsList>
+              <TabsTrigger value="features">Features</TabsTrigger>
+              <TabsTrigger value="tests">Tests</TabsTrigger>
+              <TabsTrigger value="status">Status</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="features" className="h-full">
+              <Card className="h-full flex flex-col">
+                <CardHeader className="pb-2">
+                  <CardTitle>Feature Status</CardTitle>
+                  <CardDescription>Implementation and test status for all features</CardDescription>
+                </CardHeader>
+                <CardContent className="flex-1 p-0 overflow-hidden">
+                  <ScrollArea className="h-full">
+                    <div className="p-4">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left p-2">Feature</th>
+                            <th className="text-left p-2">Area</th>
+                            <th className="text-left p-2">Implementation</th>
+                            <th className="text-left p-2">Tests</th>
+                            <th className="text-left p-2">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {isLoading ? (
+                            <tr>
+                              <td colSpan={5} className="text-center p-4">Loading features...</td>
+                            </tr>
+                          ) : filteredFeatures.length === 0 ? (
+                            <tr>
+                              <td colSpan={5} className="text-center p-4">No features found matching filters</td>
+                            </tr>
+                          ) : (
+                            filteredFeatures.map((feature) => {
+                              const testSummary = getFeatureTestSummary(feature.name);
+                              return (
+                                <tr key={feature.name} className="border-b hover:bg-muted/50 cursor-pointer" onClick={() => openFeatureDetail(feature)}>
+                                  <td className="p-2">
+                                    <div className="font-medium">{feature.name}</div>
+                                  </td>
+                                  <td className="p-2">
+                                    <Badge variant="outline">{feature.area || 'Unknown'}</Badge>
+                                  </td>
+                                  <td className="p-2">
+                                    {feature.implemented ? (
+                                      <Badge className="bg-green-100 text-green-800 hover:bg-green-200">Implemented</Badge>
+                                    ) : (
+                                      <Badge variant="outline">Not Implemented</Badge>
+                                    )}
+                                  </td>
+                                  <td className="p-2">
+                                    {renderTestStatusBadge(feature.testStatus)}
+                                    <div className="text-xs text-muted-foreground mt-1">
+                                      {testSummary.passed}/{testSummary.total} passed
+                                    </div>
+                                  </td>
+                                  <td className="p-2">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      disabled={testSummary.total === 0}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleRunFeatureTests(feature.name);
+                                      }}
+                                    >
+                                      <LuPlay className="h-3 w-3 mr-1" />
+                                      Run Tests
+                                    </Button>
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="tests" className="h-full">
+              <Card className="h-full flex flex-col">
+                <CardHeader className="pb-2">
+                  <CardTitle>Feature Tests</CardTitle>
+                  <CardDescription>All registered feature tests with execution status</CardDescription>
+                </CardHeader>
+                <CardContent className="flex-1 p-0 overflow-hidden">
+                  <ScrollArea className="h-full">
+                    <div className="p-4">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left p-2">Test Name</th>
+                            <th className="text-left p-2">Feature</th>
+                            <th className="text-left p-2">Area</th>
+                            <th className="text-left p-2">Status</th>
+                            <th className="text-left p-2">Last Run</th>
+                            <th className="text-left p-2">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {isLoading ? (
+                            <tr>
+                              <td colSpan={6} className="text-center p-4">Loading tests...</td>
+                            </tr>
+                          ) : (
+                            features.flatMap(feature => 
+                              getFeatureTests(feature.name).map(test => (
+                                <tr key={test.id} className="border-b hover:bg-muted/50">
+                                  <td className="p-2">
+                                    <div className="font-medium">{test.name}</div>
+                                    <div className="text-xs text-muted-foreground">{test.description}</div>
+                                  </td>
+                                  <td className="p-2">
+                                    <div>{test.featureName || 'Unknown'}</div>
+                                  </td>
+                                  <td className="p-2">
+                                    <Badge variant="outline">{test.area || 'Unknown'}</Badge>
+                                  </td>
+                                  <td className="p-2">
+                                    {renderTestStatusBadge(test.status)}
+                                  </td>
+                                  <td className="p-2">
+                                    {test.lastRun ? new Date(test.lastRun).toLocaleString() : 'Never'}
+                                    {test.duration !== undefined && (
+                                      <div className="text-xs text-muted-foreground">{test.duration.toFixed(2)}ms</div>
+                                    )}
+                                  </td>
+                                  <td className="p-2">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      disabled={isTestRunning[test.id]}
+                                      onClick={() => handleRunTest(test.id)}
+                                    >
+                                      {isTestRunning[test.id] ? (
+                                        <>
+                                          <LuRefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                                          Running...
+                                        </>
+                                      ) : (
+                                        <>
+                                          <LuPlay className="h-3 w-3 mr-1" />
+                                          Run
+                                        </>
+                                      )}
+                                    </Button>
+                                  </td>
+                                </tr>
+                              ))
+                            )
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="status" className="h-full">
+              <Card className="h-full flex flex-col">
+                <CardHeader className="pb-2">
+                  <CardTitle>Status Overview</CardTitle>
+                  <CardDescription>Global implementation and test status</CardDescription>
+                </CardHeader>
+                <CardContent className="flex-1 p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <h3 className="text-lg font-medium mb-2">Implementation Status</h3>
+                      <div className="space-y-2">
+                        <div>
+                          <div className="flex justify-between items-center mb-1">
+                            <div>Implemented</div>
+                            <div className="font-medium">{overallStats.implemented}/{overallStats.totalFeatures}</div>
+                          </div>
+                          <Progress value={(overallStats.implemented / overallStats.totalFeatures) * 100} className="h-2" />
+                        </div>
+                        <div>
+                          <div className="flex justify-between items-center mb-1">
+                            <div>Not Implemented</div>
+                            <div className="font-medium">{overallStats.notImplemented}/{overallStats.totalFeatures}</div>
+                          </div>
+                          <Progress 
+                            value={(overallStats.notImplemented / overallStats.totalFeatures) * 100} 
+                            className="h-2" 
+                            indicatorClassName="bg-orange-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h3 className="text-lg font-medium mb-2">Test Status</h3>
+                      <div className="space-y-2">
+                        <div>
+                          <div className="flex justify-between items-center mb-1">
+                            <div>Fully Tested</div>
+                            <div className="font-medium">{overallStats.fullyTested}/{overallStats.totalFeatures}</div>
+                          </div>
+                          <Progress 
+                            value={(overallStats.fullyTested / overallStats.totalFeatures) * 100} 
+                            className="h-2"
+                            indicatorClassName="bg-green-500"
+                          />
+                        </div>
+                        <div>
+                          <div className="flex justify-between items-center mb-1">
+                            <div>Partially Tested</div>
+                            <div className="font-medium">{overallStats.partiallyTested}/{overallStats.totalFeatures}</div>
+                          </div>
+                          <Progress 
+                            value={(overallStats.partiallyTested / overallStats.totalFeatures) * 100}
+                            className="h-2"
+                            indicatorClassName="bg-blue-500"
+                          />
+                        </div>
+                        <div>
+                          <div className="flex justify-between items-center mb-1">
+                            <div>Failed</div>
+                            <div className="font-medium">{overallStats.failed}/{overallStats.totalFeatures}</div>
+                          </div>
+                          <Progress 
+                            value={(overallStats.failed / overallStats.totalFeatures) * 100}
+                            className="h-2"
+                            indicatorClassName="bg-red-500"
+                          />
+                        </div>
+                        <div>
+                          <div className="flex justify-between items-center mb-1">
+                            <div>Not Tested</div>
+                            <div className="font-medium">{overallStats.notTested}/{overallStats.totalFeatures}</div>
+                          </div>
+                          <Progress 
+                            value={(overallStats.notTested / overallStats.totalFeatures) * 100}
+                            className="h-2"
+                            indicatorClassName="bg-yellow-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <Separator className="my-6" />
+                  
+                  <div>
+                    <h3 className="text-lg font-medium mb-4">Implementation vs Test Status</h3>
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr>
+                          <th className="border p-2 text-left">Status</th>
+                          <th className="border p-2 text-center">Not Tested</th>
+                          <th className="border p-2 text-center">Partially Tested</th>
+                          <th className="border p-2 text-center">Fully Tested</th>
+                          <th className="border p-2 text-center">Failed</th>
+                          <th className="border p-2 text-center">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td className="border p-2 font-medium">Implemented</td>
+                          <td className="border p-2 text-center">
+                            {features.filter(f => f.implemented && f.testStatus === 'not_tested').length}
+                          </td>
+                          <td className="border p-2 text-center">
+                            {features.filter(f => f.implemented && f.testStatus === 'partially_passed').length}
+                          </td>
+                          <td className="border p-2 text-center">
+                            {features.filter(f => f.implemented && f.testStatus === 'passed').length}
+                          </td>
+                          <td className="border p-2 text-center">
+                            {features.filter(f => f.implemented && f.testStatus === 'failed').length}
+                          </td>
+                          <td className="border p-2 text-center font-medium">
+                            {features.filter(f => f.implemented).length}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="border p-2 font-medium">Not Implemented</td>
+                          <td className="border p-2 text-center">
+                            {features.filter(f => !f.implemented && f.testStatus === 'not_tested').length}
+                          </td>
+                          <td className="border p-2 text-center">
+                            {features.filter(f => !f.implemented && f.testStatus === 'partially_passed').length}
+                          </td>
+                          <td className="border p-2 text-center">
+                            {features.filter(f => !f.implemented && f.testStatus === 'passed').length}
+                          </td>
+                          <td className="border p-2 text-center">
+                            {features.filter(f => !f.implemented && f.testStatus === 'failed').length}
+                          </td>
+                          <td className="border p-2 text-center font-medium">
+                            {features.filter(f => !f.implemented).length}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="border p-2 font-medium">Total</td>
+                          <td className="border p-2 text-center font-medium">
+                            {features.filter(f => f.testStatus === 'not_tested').length}
+                          </td>
+                          <td className="border p-2 text-center font-medium">
+                            {features.filter(f => f.testStatus === 'partially_passed').length}
+                          </td>
+                          <td className="border p-2 text-center font-medium">
+                            {features.filter(f => f.testStatus === 'passed').length}
+                          </td>
+                          <td className="border p-2 text-center font-medium">
+                            {features.filter(f => f.testStatus === 'failed').length}
+                          </td>
+                          <td className="border p-2 text-center font-bold">
+                            {features.length}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
+      </div>
+      
+      {detailModalOpen && selectedFeature && (
+        <FeatureDetailModal isOpen={detailModalOpen} onClose={() => setDetailModalOpen(false)} />
+      )}
+    </FeatureContext.Provider>
+  );
+}
+
+// Utility function to render test status badge with appropriate styling
+function renderTestStatusBadge(status: TestStatus | 'not_tested' | 'passed' | 'failed' | 'partially_passed' | 'skipped') {
+  switch (status) {
+    case TestStatus.PASSED:
+    case 'passed':
+      return (
+        <Badge className="bg-green-100 text-green-800 hover:bg-green-200">
+          <LuCheckCircle2 className="h-3 w-3 mr-1" />
+          Passed
+        </Badge>
+      );
+    case TestStatus.FAILED:
+    case 'failed':
+      return (
+        <Badge className="bg-red-100 text-red-800 hover:bg-red-200">
+          <LuXCircle className="h-3 w-3 mr-1" />
+          Failed
+        </Badge>
+      );
+    case TestStatus.SKIPPED:
+    case 'skipped':
+      return (
+        <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200">
+          <LuAlertCircle className="h-3 w-3 mr-1" />
+          Skipped
+        </Badge>
+      );
+    case 'partially_passed':
+      return (
+        <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200">
+          <LuInfo className="h-3 w-3 mr-1" />
+          Partially Passed
+        </Badge>
+      );
+    case TestStatus.NOT_STARTED:
+    case 'not_tested':
+    default:
+      return (
+        <Badge variant="outline">
+          <LuClock className="h-3 w-3 mr-1" />
+          Not Tested
+        </Badge>
+      );
+  }
+}
+
+// Feature Detail Modal
 interface FeatureStatus {
   name: string;
   implemented: boolean;
@@ -42,625 +695,197 @@ interface FeatureStatus {
   area?: FeatureArea;
 }
 
-interface FeatureTestStatus {
+interface FeatureTestItem {
   id: string;
   name: string;
   description: string;
   status: TestStatus;
-  error?: string;
   duration?: number;
-  timestamp?: Date;
+  error?: string;
 }
 
-interface FeatureContextType {
-  selectedFeature: FeatureStatus | null;
-  selectFeature: (feature: FeatureStatus | null) => void;
-  selectedTab: string;
-  setSelectedTab: (tab: string) => void;
+interface FeatureDetailModalProps {
+  isOpen: boolean;
+  onClose: () => void;
 }
 
-// Create the context
-const FeatureContext = createContext<FeatureContextType>({
-  selectedFeature: null,
-  selectFeature: () => {},
-  selectedTab: 'feature-dashboard',
-  setSelectedTab: () => {}
-});
-
-// Custom hook to use the feature context
-export const useFeatureContext = () => useContext(FeatureContext);
-
-// Filter state interface
-interface FilterState {
-  area: FeatureArea | 'all';
-  implementationStatus: 'all' | 'implemented' | 'not-implemented';
-  testStatus: 'all' | 'tested' | 'not-tested';
-  searchQuery: string;
-}
-
-export function UnifiedDebugDashboard() {
-  // State for the selected feature
-  const [selectedFeature, setSelectedFeature] = useState<FeatureStatus | null>(null);
+export function FeatureDetailModal({ isOpen, onClose }: FeatureDetailModalProps) {
+  const { selectedFeature } = useFeatureContext();
+  const { getFeatureTests } = useFeatureTests();
+  const [runningTest, setRunningTest] = useState<string | null>(null);
   
-  // State for the selected tab
-  const [selectedTab, setSelectedTab] = useState('feature-dashboard');
+  if (!selectedFeature) return null;
   
-  // State for filtering
-  const [filters, setFilters] = useState<FilterState>({
-    area: 'all',
-    implementationStatus: 'all',
-    testStatus: 'all',
-    searchQuery: ''
-  });
-
-  // Get feature data
-  const features = useMemo(() => {
-    const featureData = getFeatureVerificationStatus();
-    return Object.entries(featureData).map(([name, data]) => ({
-      name,
-      ...data
-    }));
-  }, []);
-
-  // Get test results
-  const testResults = useMemo(() => getTestResults(), []);
-
-  // Filter features based on current filters
-  const filteredFeatures = useMemo(() => {
-    return features.filter(feature => {
-      // Filter by area (safely check if area exists)
-      if (filters.area !== 'all' && (!feature.area || feature.area !== filters.area)) {
-        return false;
-      }
-      
-      // Filter by implementation status
-      if (
-        filters.implementationStatus === 'implemented' && !feature.implemented ||
-        filters.implementationStatus === 'not-implemented' && feature.implemented
-      ) {
-        return false;
-      }
-      
-      // Filter by test status
-      if (
-        filters.testStatus === 'tested' && !feature.tested ||
-        filters.testStatus === 'not-tested' && feature.tested
-      ) {
-        return false;
-      }
-      
-      // Filter by search query
-      if (filters.searchQuery && !feature.name.toLowerCase().includes(filters.searchQuery.toLowerCase())) {
-        return false;
-      }
-      
-      return true;
-    });
-  }, [features, filters]);
-
-  // Function to handle feature selection
-  const selectFeature = (feature: FeatureStatus | null) => {
-    setSelectedFeature(feature);
-  };
-
-  // Feature context value
-  const featureContextValue = {
-    selectedFeature,
-    selectFeature,
-    selectedTab,
-    setSelectedTab
-  };
-
-  // Handle search input change
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFilters(prev => ({ ...prev, searchQuery: e.target.value }));
-  };
-
-  // Handle area filter change
-  const handleAreaFilterChange = (area: FeatureArea | 'all') => {
-    setFilters(prev => ({ ...prev, area }));
-  };
-
-  // Handle implementation status filter change
-  const handleImplementationStatusChange = (status: 'all' | 'implemented' | 'not-implemented') => {
-    setFilters(prev => ({ ...prev, implementationStatus: status }));
-  };
-
-  // Handle test status filter change
-  const handleTestStatusChange = (status: 'all' | 'tested' | 'not-tested') => {
-    setFilters(prev => ({ ...prev, testStatus: status }));
-  };
-
-  // Function to run all tests
-  const handleRunAllTests = async () => {
-    // Log that all tests are being run
-    debugStorage.addLogEntry(
-      LogLevel.INFO,
-      FeatureArea.UI,
-      "Running all feature tests from the Debug Dashboard",
-      { timestamp: new Date() }
-    );
+  const tests = getFeatureTests(selectedFeature.name);
+  
+  const handleRunTest = async (testId: string) => {
+    if (runningTest) return;
     
+    setRunningTest(testId);
     try {
-      // Get registered tests
-      const testsToRun = getRegisteredTests();
-      
-      // Log how many tests will be run
-      debugStorage.addLogEntry(
-        LogLevel.INFO,
-        FeatureArea.UI,
-        `Initiating ${testsToRun.length} feature tests`,
-        { testCount: testsToRun.length }
-      );
-      
-      // Create a context for this test run
-      const contextId = `all-tests-${Date.now()}`;
-      
-      // Run each test sequentially and collect results
-      const results = [];
-      
-      for (const test of testsToRun) {
-        try {
-          debugStorage.addLogEntry(
-            LogLevel.INFO,
-            FeatureArea.UI,
-            `Running test: ${test.id}`,
-            { testId: test.id, testName: test.name }
-          );
-          
-          // Run the test
-          const result = await runFeatureTest(test.id);
-          results.push(result);
-          
-          // Update the UI to reflect the new test status
-          // This will force a refresh of the test results in the UI
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          debugStorage.addLogEntry(
-            LogLevel.ERROR,
-            FeatureArea.UI,
-            `Error running test ${test.id}`,
-            { testId: test.id, error: errorMessage }
-          );
-        }
-      }
-      
-      // Log completion
-      const passedCount = results.filter(r => r.status === TestStatus.PASSED).length;
-      const failedCount = results.filter(r => r.status === TestStatus.FAILED).length;
-      const skippedCount = results.filter(r => r.status === TestStatus.SKIPPED).length;
-      
-      debugStorage.addLogEntry(
-        LogLevel.INFO,
-        FeatureArea.UI,
-        `Test run complete: ${passedCount} passed, ${failedCount} failed, ${skippedCount} skipped`,
-        { passed: passedCount, failed: failedCount, skipped: skippedCount }
-      );
-      
-      // Force a refresh of the component by setting a state variable
-      // This is just a temporary solution until we implement proper state management
-      setSelectedTab(selectedTab);
-      
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      debugStorage.addLogEntry(
-        LogLevel.ERROR,
-        FeatureArea.UI,
-        "Error running all tests",
-        { error: errorMessage }
-      );
+      await runFeatureTest(testId);
+    } finally {
+      setRunningTest(null);
     }
-  };
-
-  // State for modal visibility
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  
-  // Function to open feature detail modal
-  const openFeatureDetail = (feature: FeatureStatus) => {
-    selectFeature(feature);
-    setIsDetailModalOpen(true);
   };
   
   return (
-    <FeatureContext.Provider value={featureContextValue}>
-      {/* Feature Detail Modal */}
-      <FeatureDetailModal 
-        isOpen={isDetailModalOpen}
-        onClose={() => setIsDetailModalOpen(false)}
-      />
-      
-      <div className="container mx-auto p-4 space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Unified Debug Dashboard</h1>
-          <Button 
-            onClick={handleRunAllTests}
-            className="flex items-center space-x-2"
-          >
-            <Play className="h-4 w-4" />
-            <span>Run All Tests</span>
+    <div className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 ${isOpen ? 'block' : 'hidden'}`}>
+      <div className="bg-background rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="p-4 border-b flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl font-bold">{selectedFeature.name}</h2>
+            <div className="flex gap-2 mt-1">
+              <Badge variant="outline">{selectedFeature.area || 'Unknown Area'}</Badge>
+              {selectedFeature.implemented ? (
+                <Badge className="bg-green-100 text-green-800">Implemented</Badge>
+              ) : (
+                <Badge variant="outline">Not Implemented</Badge>
+              )}
+              {renderTestStatusBadge(selectedFeature.testStatus)}
+            </div>
+          </div>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            <LuXCircle className="h-5 w-5" />
           </Button>
         </div>
         
-        <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
-          <TabsList className="grid grid-cols-5 mb-4">
-            <TabsTrigger value="feature-dashboard" className="flex items-center">
-              <LayoutDashboard className="h-4 w-4 mr-2" />
-              Feature Dashboard
-            </TabsTrigger>
-            <TabsTrigger value="logs" className="flex items-center">
-              <Terminal className="h-4 w-4 mr-2" />
-              Logs
-            </TabsTrigger>
-            <TabsTrigger value="api-dashboard" className="flex items-center">
-              <Code className="h-4 w-4 mr-2" />
-              API Dashboard
-            </TabsTrigger>
-            <TabsTrigger value="performance" className="flex items-center">
-              <Activity className="h-4 w-4 mr-2" />
-              Performance
-            </TabsTrigger>
-            <TabsTrigger value="documentation" className="flex items-center">
-              <FileText className="h-4 w-4 mr-2" />
-              Documentation
-            </TabsTrigger>
-          </TabsList>
-          
-          {/* Feature Dashboard Tab */}
-          <TabsContent value="feature-dashboard" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Feature Implementation Status</CardTitle>
-                <CardDescription>
-                  Monitor implementation status and run tests for all application features
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex justify-between mb-6">
-                  <div className="flex items-center space-x-2 w-1/3">
-                    <Search className="h-4 w-4 text-gray-500" />
-                    <Input 
-                      placeholder="Search features..." 
-                      value={filters.searchQuery}
-                      onChange={handleSearchChange}
-                      className="h-9"
-                    />
-                  </div>
-                  <div className="flex items-center space-x-4">
-                    <div className="flex items-center space-x-2">
-                      <Filter className="h-4 w-4 text-gray-500" />
-                      <select 
-                        className="bg-transparent border rounded px-2 py-1 text-sm"
-                        value={filters.area}
-                        onChange={(e) => handleAreaFilterChange(e.target.value as FeatureArea | 'all')}
-                      >
-                        <option value="all">All Areas</option>
-                        {Object.values(FeatureArea).map(area => (
-                          <option key={area} value={area}>{area}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <select 
-                        className="bg-transparent border rounded px-2 py-1 text-sm"
-                        value={filters.implementationStatus}
-                        onChange={(e) => handleImplementationStatusChange(e.target.value as 'all' | 'implemented' | 'not-implemented')}
-                      >
-                        <option value="all">All Implementation</option>
-                        <option value="implemented">Implemented</option>
-                        <option value="not-implemented">Not Implemented</option>
-                      </select>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <select 
-                        className="bg-transparent border rounded px-2 py-1 text-sm"
-                        value={filters.testStatus}
-                        onChange={(e) => handleTestStatusChange(e.target.value as 'all' | 'tested' | 'not-tested')}
-                      >
-                        <option value="all">All Test Status</option>
-                        <option value="tested">Tested</option>
-                        <option value="not-tested">Not Tested</option>
-                      </select>
-                    </div>
-                    <Button variant="outline" size="sm" onClick={() => setFilters({
-                      area: 'all',
-                      implementationStatus: 'all',
-                      testStatus: 'all',
-                      searchQuery: ''
-                    })}>
-                      <RefreshCw className="h-3 w-3 mr-1" />
-                      Reset
-                    </Button>
-                  </div>
-                </div>
-                
-                {/* Status Summary */}
-                <div className="grid grid-cols-3 gap-4 mb-6">
-                  <Card className="bg-gray-50 dark:bg-gray-800">
-                    <CardContent className="p-4">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Implemented</div>
-                          <div className="text-2xl font-bold">
-                            {features.filter(f => f.implemented).length}/{features.length}
-                          </div>
-                        </div>
-                        <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                          <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
-                        </div>
-                      </div>
-                      <div className="mt-2 h-2 rounded-full bg-gray-200 dark:bg-gray-700">
-                        <div 
-                          className="h-full rounded-full bg-green-500" 
-                          style={{ width: `${(features.filter(f => f.implemented).length / features.length) * 100}%` }}
-                        ></div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  <Card className="bg-gray-50 dark:bg-gray-800">
-                    <CardContent className="p-4">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Tested</div>
-                          <div className="text-2xl font-bold">
-                            {features.filter(f => f.tested).length}/{features.length}
-                          </div>
-                        </div>
-                        <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                          <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                        </div>
-                      </div>
-                      <div className="mt-2 h-2 rounded-full bg-gray-200 dark:bg-gray-700">
-                        <div 
-                          className="h-full rounded-full bg-blue-500" 
-                          style={{ width: `${(features.filter(f => f.tested).length / features.length) * 100}%` }}
-                        ></div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  <Card className="bg-gray-50 dark:bg-gray-800">
-                    <CardContent className="p-4">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Complete</div>
-                          <div className="text-2xl font-bold">
-                            {features.filter(f => f.implemented && f.tested).length}/{features.length}
-                          </div>
-                        </div>
-                        <div className="h-10 w-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                          <CheckCircle2 className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                        </div>
-                      </div>
-                      <div className="mt-2 h-2 rounded-full bg-gray-200 dark:bg-gray-700">
-                        <div 
-                          className="h-full rounded-full bg-purple-500" 
-                          style={{ width: `${(features.filter(f => f.implemented && f.tested).length / features.length) * 100}%` }}
-                        ></div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-                
-                {/* Feature List */}
-                <ScrollArea className="h-[400px] rounded-md border p-4">
-                  <div className="space-y-2">
-                    {filteredFeatures.length > 0 ? (
-                      filteredFeatures.map((feature, idx) => (
-                        <div 
-                          key={idx} 
-                          className="border rounded-md p-3 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
-                          onClick={() => openFeatureDetail(feature)}
-                        >
-                          <div className="flex items-center">
-                            <div>
-                              <div className="font-medium">{feature.name}</div>
-                              <div className="text-sm text-gray-500">
-                                {feature.area || 'General'} • Last updated: {feature.lastVerified ? new Date(feature.lastVerified).toLocaleDateString() : 'Never'}
+        <div className="flex-1 overflow-auto">
+          <div className="p-4">
+            <Tabs defaultValue="tests">
+              <TabsList>
+                <TabsTrigger value="tests">Tests</TabsTrigger>
+                <TabsTrigger value="notes">Notes</TabsTrigger>
+                <TabsTrigger value="dependencies">Dependencies</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="tests" className="p-4">
+                <div className="mb-4">
+                  <h3 className="text-lg font-medium mb-2">Feature Tests</h3>
+                  {tests.length === 0 ? (
+                    <div className="text-muted-foreground italic">No tests available for this feature</div>
+                  ) : (
+                    <div className="space-y-4">
+                      {tests.map((test) => (
+                        <Card key={test.id}>
+                          <CardHeader className="pb-2">
+                            <CardTitle className="text-base">{test.name}</CardTitle>
+                            <CardDescription>{test.description}</CardDescription>
+                          </CardHeader>
+                          <CardContent className="pb-2">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <div className="text-sm text-muted-foreground">Status</div>
+                                <div>{renderTestStatusBadge(test.status)}</div>
                               </div>
+                              <div>
+                                <div className="text-sm text-muted-foreground">Last Run</div>
+                                <div>{test.lastRun ? new Date(test.lastRun).toLocaleString() : 'Never'}</div>
+                              </div>
+                              {test.duration !== undefined && (
+                                <div>
+                                  <div className="text-sm text-muted-foreground">Duration</div>
+                                  <div>{test.duration.toFixed(2)}ms</div>
+                                </div>
+                              )}
+                              {test.error && (
+                                <div className="col-span-2">
+                                  <div className="text-sm text-muted-foreground">Error</div>
+                                  <div className="text-red-500 text-sm p-2 bg-red-50 rounded border border-red-100 mt-1">
+                                    {test.error}
+                                  </div>
+                                </div>
+                              )}
                             </div>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Badge variant={feature.implemented ? "default" : "outline"} className={feature.implemented ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" : ""}>
-                              {feature.implemented ? (
-                                <><CheckCircle2 className="h-3 w-3 mr-1" /> Implemented</>
-                              ) : (
-                                <><XCircle className="h-3 w-3 mr-1" /> Not Implemented</>
-                              )}
-                            </Badge>
-                            <Badge variant={feature.tested ? "default" : "outline"} className={feature.tested ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400" : ""}>
-                              {feature.tested ? (
-                                <><CheckCircle2 className="h-3 w-3 mr-1" /> Tested</>
-                              ) : (
-                                <><XCircle className="h-3 w-3 mr-1" /> Not Tested</>
-                              )}
-                            </Badge>
+                          </CardContent>
+                          <CardFooter>
                             <Button 
-                              variant="ghost" 
+                              variant="outline" 
                               size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openFeatureDetail(feature);
-                              }}
+                              disabled={runningTest !== null}
+                              onClick={() => handleRunTest(test.id)}
                             >
-                              <ChevronRight className="h-4 w-4" />
+                              {runningTest === test.id ? (
+                                <>
+                                  <LuRefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                                  Running...
+                                </>
+                              ) : (
+                                <>
+                                  <LuPlay className="h-3 w-3 mr-1" />
+                                  Run Test
+                                </>
+                              )}
                             </Button>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-center p-8 text-gray-500">
-                        <p>No features found matching your filters</p>
+                          </CardFooter>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="notes" className="p-4">
+                <h3 className="text-lg font-medium mb-2">Implementation Notes</h3>
+                {selectedFeature.notes.length === 0 ? (
+                  <div className="text-muted-foreground italic">No notes available for this feature</div>
+                ) : (
+                  <ul className="list-disc pl-5 space-y-2">
+                    {selectedFeature.notes.map((note, index) => (
+                      <li key={index}>{note}</li>
+                    ))}
+                  </ul>
+                )}
+                
+                <div className="mt-4">
+                  <h4 className="font-medium">Implementation Status</h4>
+                  <div className="mt-2">
+                    <div className="flex items-center">
+                      <div className="w-40 text-sm text-muted-foreground">Status:</div>
+                      <div>{selectedFeature.implemented ? 'Implemented' : 'Not Implemented'}</div>
+                    </div>
+                    {selectedFeature.implementedAt && (
+                      <div className="flex items-center mt-1">
+                        <div className="w-40 text-sm text-muted-foreground">Implemented At:</div>
+                        <div>{new Date(selectedFeature.implementedAt).toLocaleString()}</div>
                       </div>
                     )}
                   </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-            
-            {/* For now, include the old FeatureStatusDashboard for reference - will be removed later */}
-            <div className="opacity-0 h-0 overflow-hidden">
-              <FeatureStatusDashboard />
-            </div>
-          </TabsContent>
-          
-          {/* Logs Tab */}
-          <TabsContent value="logs" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Terminal className="h-5 w-5 mr-2" />
-                  Application Logs
-                </CardTitle>
-                <CardDescription>
-                  {selectedFeature 
-                    ? `Viewing logs for feature: ${selectedFeature.name}`
-                    : "View and filter application logs across all features"}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {/* For now, include the old EnhancedLogViewer - will be updated later */}
-                <EnhancedLogViewer />
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          {/* API Dashboard Tab */}
-          <TabsContent value="api-dashboard" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Code className="h-5 w-5 mr-2" />
-                  API Dashboard
-                </CardTitle>
-                <CardDescription>
-                  {selectedFeature 
-                    ? `Viewing API endpoints for feature: ${selectedFeature.name}`
-                    : "Monitor and test API endpoints across all features"}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {/* For now, include the old EnhancedApiDashboard - will be updated later */}
-                <EnhancedApiDashboard />
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          {/* Performance Tab */}
-          <TabsContent value="performance" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Activity className="h-5 w-5 mr-2" />
-                  Performance Metrics
-                </CardTitle>
-                <CardDescription>
-                  {selectedFeature 
-                    ? `Viewing performance metrics for feature: ${selectedFeature.name}`
-                    : "Monitor application performance across all features"}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {/* For now, include the old PerformanceMetricsPanel - will be updated later */}
-                <PerformanceMetricsPanel />
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          {/* Documentation Tab */}
-          <TabsContent value="documentation" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <FileText className="h-5 w-5 mr-2" />
-                  Feature Documentation
-                </CardTitle>
-                <CardDescription>
-                  {selectedFeature 
-                    ? `Viewing documentation for feature: ${selectedFeature.name}`
-                    : "Browse documentation for all application features"}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {selectedFeature ? (
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-xl font-semibold">{selectedFeature.name}</h3>
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => openFeatureDetail(selectedFeature)}
-                      >
-                        View Details
-                      </Button>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <Card>
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-sm font-medium">Implementation Details</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          {selectedFeature.notes.length > 0 ? (
-                            <ul className="list-disc pl-5 space-y-1">
-                              {selectedFeature.notes.map((note, idx) => (
-                                <li key={idx}>{note}</li>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="dependencies" className="p-4">
+                <h3 className="text-lg font-medium mb-2">Dependencies</h3>
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-medium mb-2">Test Dependencies</h4>
+                    {tests.filter(t => t.dependencies && t.dependencies.length > 0).length === 0 ? (
+                      <div className="text-muted-foreground italic">No dependencies found for tests of this feature</div>
+                    ) : (
+                      <ul className="space-y-2">
+                        {tests.filter(t => t.dependencies && t.dependencies.length > 0).map(test => (
+                          <li key={test.id}>
+                            <span className="font-medium">{test.name}</span> depends on:
+                            <ul className="list-disc pl-5 mt-1">
+                              {test.dependencies?.map(dep => (
+                                <li key={dep}>{dep}</li>
                               ))}
                             </ul>
-                          ) : (
-                            <p className="text-gray-500">No implementation notes available</p>
-                          )}
-                        </CardContent>
-                      </Card>
-                      
-                      <Card>
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-sm font-medium">Status</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <span>Implementation:</span>
-                              <Badge variant={selectedFeature.implemented ? "default" : "outline"} className={selectedFeature.implemented ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" : ""}>
-                                {selectedFeature.implemented ? "Complete" : "Incomplete"}
-                              </Badge>
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <span>Testing:</span>
-                              <Badge variant={selectedFeature.tested ? "default" : "outline"} className={selectedFeature.tested ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400" : ""}>
-                                {selectedFeature.tested ? "Complete" : "Incomplete"}
-                              </Badge>
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <span>Last Updated:</span>
-                              <span className="text-sm">
-                                {selectedFeature.lastVerified 
-                                  ? new Date(selectedFeature.lastVerified).toLocaleDateString() 
-                                  : 'Never'}
-                              </span>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-                    
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium">Technical Documentation</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-gray-500">Detailed technical documentation will be implemented in future batches.</p>
-                      </CardContent>
-                    </Card>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
-                ) : (
-                  <div className="text-center p-8">
-                    <p className="text-gray-500">Select a feature to view its documentation</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </div>
+        
+        <div className="p-4 border-t flex justify-end">
+          <Button onClick={onClose}>Close</Button>
+        </div>
       </div>
-    </FeatureContext.Provider>
+    </div>
   );
 }
