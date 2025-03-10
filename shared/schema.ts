@@ -90,7 +90,10 @@ export const goalFormSchema = z.object({
   description: z.string().min(3, "Description must be at least 3 characters"),
   targetValue: z.number().positive("Target value must be positive"),
   unit: z.string().min(1, "Unit is required"),
-  deadline: z.date(),
+  deadline: z.union([
+    z.date(),
+    z.string().transform((str) => new Date(str))
+  ]),
   categoryId: z.number().optional(),
   reminderFrequency: z.enum(["daily", "weekly", "none"]),
 });
