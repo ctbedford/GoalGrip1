@@ -1,169 +1,155 @@
-# GOAL:SYNC API Standards
+# API Standards Documentation
 
-This document outlines the standards and conventions used in the GOAL:SYNC API, including error formats, data validation requirements, and common patterns.
+This document outlines the standards and conventions used in the GOAL:SYNC application's API, with a focus on the debug API endpoints.
 
-## Table of Contents
-- [Error Handling](#error-handling)
-- [Authentication](#authentication)
-- [Data Validation](#data-validation)
-- [Common Request Examples](#common-request-examples)
-- [Testing Guide](#testing-guide)
+## API Endpoint Structure
 
-## Error Handling
+All API endpoints follow a consistent structure:
 
-### Error Response Format
+1. **Resource-based URL paths** - URLs are organized around resources
+   - Examples: `/api/goals`, `/api/debug`, `/api/action-items`
 
-All API errors follow a consistent format:
+2. **HTTP verbs** - Standard HTTP methods express actions
+   - `GET` - Retrieve resources
+   - `POST` - Create new resources or execute actions
+   - `PUT` - Update resources (full replacement)
+   - `PATCH` - Partial update of resources
+   - `DELETE` - Remove resources
+
+3. **Consistent response format** - All responses use a consistent JSON structure
+   - Success responses include the requested data
+   - Error responses follow a standardized error format
+
+## Debug API Standards
+
+The debug API follows additional standards for debugging and testing:
+
+### Endpoint Naming
+
+1. **List/Index endpoints** - `GET /api/debug`
+   - Returns a list of available debug functions
+   - Includes metadata and documentation links
+
+2. **Function-specific endpoints** - `GET /api/debug/:functionName`
+   - Addresses a specific debug function
+   - Returns information about that function and its capabilities
+
+3. **Action endpoints** - `POST /api/debug/query`
+   - Used for operations that require parameters or have side effects
+   - Accept JSON payloads with specific schemas
+
+### Request Format
+
+All requests to the debug API should follow these conventions:
+
+1. **Content-Type header** - `application/json` for all requests with a body
+2. **JSON request bodies** - Well-formed JSON for all POST/PUT/PATCH requests
+3. **URL parameters** - Used for resource identification
+4. **Query parameters** - Used for filtering, sorting, and pagination
+
+Example query request:
+```json
+{
+  "query": "getFeatureVerificationStatus()"
+}
+```
+
+### Response Format
+
+All responses from the debug API follow a consistent format:
+
+#### Success Responses
+
+```json
+{
+  "message": "Debug query processed",
+  "query": {
+    "text": "getFeatureVerificationStatus()",
+    "type": "featureStatus",
+    "processed": true
+  },
+  "result": {
+    "status": "success",
+    "timestamp": "2025-03-10T10:49:36.465Z",
+    "data": { ... }
+  }
+}
+```
+
+#### Error Responses
 
 ```json
 {
   "error": {
-    "code": "ERROR_CODE",
-    "message": "Human readable error message",
+    "code": "VALIDATION_ERROR",
+    "message": "Invalid query format",
     "details": [
       {
-        "field": "fieldName",
-        "expected": "expectedType",
-        "received": "receivedValue",
-        "constraint": "constraintDescription"
+        "path": ["query"],
+        "message": "String must contain at least 3 character(s)"
       }
-    ],
-    "documentationUrl": "/docs/api-errors#error-code"
+    ]
   }
 }
 ```
 
 ### Error Codes
 
-| Code | HTTP Status | Description |
-|------|-------------|-------------|
-| `VALIDATION_ERROR` | 400 | Request data failed validation |
-| `NOT_FOUND` | 404 | Requested resource doesn't exist |
-| `UNAUTHORIZED` | 401 | Authentication required |
-| `FORBIDDEN` | 403 | Authenticated but not authorized |
-| `CONFLICT` | 409 | Resource conflict (e.g., duplicate) |
-| `INTERNAL_ERROR` | 500 | Server error |
+The API uses the following error codes:
 
-## Authentication
+| Code              | HTTP Status | Description                                  |
+|-------------------|-------------|----------------------------------------------|
+| VALIDATION_ERROR  | 400         | Invalid input data                           |
+| NOT_FOUND         | 404         | Resource or function not found               |
+| UNAUTHORIZED      | 401         | Authentication required                      |
+| FORBIDDEN         | 403         | Insufficient permissions                     |
+| CONFLICT          | 409         | Resource already exists or state conflict    |
+| INTERNAL_ERROR    | 500         | Server-side error                            |
 
-For the current MVP, authentication is simulated. All requests use a default `userId` of 1.
+## Testing with curl
 
-In future releases, the API will use proper authentication with JWT tokens. Endpoints that require authentication will be protected with the `requireAuth` middleware.
-
-## Data Validation
-
-The API uses Zod for data validation. Here are the common validation requirements:
-
-### User
-
-- `username`: String, minimum 3 characters, unique
-- `name`: String
-
-### Goal
-
-- `description`: String, required
-- `targetValue`: Number, required
-- `unit`: String, required
-- `deadline`: ISO8601 date string (YYYY-MM-DDTHH:mm:ss.sssZ), required
-- `categoryId`: Number, required (0 for no category)
-- `reminderFrequency`: String, one of ["daily", "weekly", "monthly"]
-- `userId`: Number, required
-
-### Progress Log
-
-- `goalId`: Number, required
-- `value`: Number, required
-- `notes`: String, optional
-
-### Action Item
-
-- `completed`: Boolean, required for updates
-
-## Common Request Examples
-
-### Creating a Goal
+The debug API can be tested using curl commands:
 
 ```bash
-curl -X POST http://localhost:3000/api/goals \
+# Get a list of all available debug functions
+curl -X GET http://localhost:5000/api/debug
+
+# Execute a specific debug function
+curl -X GET http://localhost:5000/api/debug/getFeatureVerificationStatus
+
+# Execute a custom debug query
+curl -X POST http://localhost:5000/api/debug/query \
   -H "Content-Type: application/json" \
-  -d '{
-    "description": "Run 5km every week",
-    "targetValue": 5,
-    "unit": "kilometers",
-    "deadline": "2025-04-07T00:00:00.000Z",
-    "categoryId": 0,
-    "reminderFrequency": "weekly"
-  }'
+  -d '{"query": "getFeatureVerificationStatus()"}'
 ```
 
-### Logging Progress
+## Security Considerations
 
-```bash
-curl -X POST http://localhost:3000/api/progress \
-  -H "Content-Type: application/json" \
-  -d '{
-    "goalId": 1,
-    "value": 2.5,
-    "notes": "Ran at the park"
-  }'
-```
+The debug API implements several security measures:
 
-### Updating an Action Item
+1. **No Direct Execution**: Server-side API endpoints don't directly execute arbitrary code. Instead, they provide a structured interface for interacting with the debug infrastructure.
 
-```bash
-curl -X PATCH http://localhost:3000/api/action-items/1 \
-  -H "Content-Type: application/json" \
-  -d '{
-    "completed": true
-  }'
-```
+2. **Input Validation**: All inputs are validated using Zod schemas to prevent injection attacks.
 
-## Testing Guide
+3. **Limited Functionality**: Debug endpoints are designed with specific, limited functionality to reduce attack surface.
 
-### Testing Tools
+4. **Read-Only Operations**: Most debug endpoints are read-only to prevent unintended side effects.
 
-GOAL:SYNC includes built-in testing utilities:
+## Integration with Frontend
 
-1. **apiTester**: Located in `client/src/lib/apiTester.ts`, provides methods to test API endpoints
-2. **featureTester**: Located in `client/src/lib/featureTester.tsx`, offers UI component testing
+The debug API is designed to integrate with the Debug Toolchain Inspector component, which provides:
 
-### API Testing Flow
+1. **Visual Interface**: Graphical interface for executing debug queries
+2. **Documentation**: Interactive documentation of available functions
+3. **Request Builder**: Assistance in constructing valid API requests
+4. **Response Viewer**: Formatted display of API responses
 
-To test an API endpoint:
+## Future API Enhancements
 
-```typescript
-import { testEndpoint, ApiEndpoint } from '@/lib/apiTester';
+Planned enhancements to the debug API include:
 
-// Test goal creation
-const result = await testEndpoint({
-  endpoint: ApiEndpoint.GOALS,
-  method: 'POST',
-  data: {
-    description: "Complete project documentation",
-    targetValue: 100,
-    unit: "percent",
-    deadline: new Date().toISOString(), // Proper ISO format
-    categoryId: 0, // Use 0 for no category, not null
-    reminderFrequency: "weekly",
-    userId: 1 // Always include userId
-  }
-});
-
-// Check result
-console.log(result.success, result.data);
-```
-
-### Common Testing Pitfalls
-
-- Ensure dates are in ISO8601 format (use `new Date().toISOString()`)
-- Always use numeric IDs (e.g., `categoryId: 0` instead of `categoryId: null`)
-- Include `userId` in requests that require it
-- Check validation errors in the response details array for specific field issues
-
-### Automated Test Suite
-
-Run the full test suite from the debug page:
-
-1. Navigate to `/debug`
-2. Click "Run API Tests"
-3. Review the test results and fix any failures
+1. **Authentication**: Adding token-based authentication for debug endpoints
+2. **Rate Limiting**: Implementing rate limiting to prevent abuse
+3. **Webhook Support**: Adding webhook capabilities for real-time notifications
+4. **Query Caching**: Implementing caching for frequently used queries
+5. **Batch Operations**: Supporting batch operations for multiple queries

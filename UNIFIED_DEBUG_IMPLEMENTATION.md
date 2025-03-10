@@ -249,6 +249,108 @@ public updateFeatureTestStatus(testIds: string[]): void {
    - Correlation IDs link tests with log entries
    - Execution contexts provide structured information
 
+## Debug API Access
+
+The debug infrastructure includes HTTP API endpoints that allow external tools to interact with the debug toolchain. This enables integration with external testing tools, monitoring systems, and CI/CD pipelines.
+
+### API Endpoints
+
+1. **GET /api/debug**
+   - Returns a list of all available debug functions
+   - Includes function names and descriptions
+   - Provides usage information for other endpoints
+
+2. **GET /api/debug/:functionName**
+   - Executes a specific debug function
+   - Returns the result of the function
+   - Example: `/api/debug/getFeatureVerificationStatus`
+
+3. **POST /api/debug/query**
+   - Executes a custom debug query
+   - Accepts a query parameter in the request body
+   - Returns the result of the query execution
+
+### Example Usage with curl
+
+The following examples demonstrate how to use the debug API with curl:
+
+```bash
+# Get a list of all available debug functions
+$ curl -X GET http://localhost:5000/api/debug
+{
+  "availableFunctions": [
+    {"name": "getFeatureVerificationStatus", "description": "Execute the getFeatureVerificationStatus debug function"},
+    {"name": "markFeatureImplemented", "description": "Execute the markFeatureImplemented debug function"},
+    # ... more functions ...
+  ],
+  "usage": {
+    "GET": "/api/debug/:functionName - Execute a specific debug function",
+    "POST": "/api/debug/query - Execute a custom debug query"
+  }
+}
+
+# Execute a specific debug function
+$ curl -X GET http://localhost:5000/api/debug/getFeatureVerificationStatus
+{
+  "message": "Debug API endpoint registered and available",
+  "functionName": "getFeatureVerificationStatus",
+  "status": "This function is recognized but execution is handled by the client",
+  "timestamp": "2025-03-10T10:49:33.017Z"
+}
+
+# Execute a custom debug query
+$ curl -X POST http://localhost:5000/api/debug/query \
+  -H "Content-Type: application/json" \
+  -d '{"query": "getFeatureVerificationStatus()"}'
+{
+  "message": "Debug query processed",
+  "query": {
+    "text": "getFeatureVerificationStatus()",
+    "type": "featureStatus",
+    "processed": true
+  },
+  "result": {
+    "status": "success",
+    "timestamp": "2025-03-10T10:49:36.465Z",
+    "data": {
+      "message": "The query was properly received by the debug API",
+      "note": "For security reasons, queries are handled by the client. This API endpoint serves as a bridge for external tools."
+    }
+  },
+  "documentation": {
+    "availableQueryTypes": ["logger", "featureStatus", "apiTest", "featureTest", "debugStorage", "customQuery"],
+    "exampleQueries": {
+      "featureStatus": "getFeatureVerificationStatus()",
+      "apiTest": "apiTester.testAllEndpoints()",
+      "featureTest": "featureTester.runFeatureTest(\"enhanced-logger\")",
+      "debugStorage": "debugStorage.getLogEntries()",
+      "logger": "logger.markFeatureImplemented(\"feature-name\", \"implementation note\")"
+    }
+  }
+}
+```
+
+### Security Considerations
+
+The Debug API implements several security measures:
+
+1. **No Direct Execution**: For security reasons, the server-side API endpoints don't directly execute code or JavaScript queries. Instead, they provide a structured interface for interacting with the debug infrastructure.
+
+2. **Bridge Interface**: The API serves as a bridge for external tools to communicate with the debug infrastructure, with actual query execution handled by the client-side Debug Toolchain Inspector.
+
+3. **Input Validation**: All inputs are validated to prevent injection attacks or malformed requests.
+
+### Integration with Debug Toolchain Inspector
+
+The Debug Toolchain Inspector UI provides a visual interface for the Debug API, including:
+
+1. **API Documentation**: Documentation for all available API endpoints
+2. **Curl Examples**: Example curl commands for using the API
+3. **Response Format**: Documentation of the response format
+4. **Query Editor**: Visual interface for building and testing queries
+
+This integration enables developers to explore the API through the UI before integrating with external tools.
+
 ## Future Enhancements
 
 1. **Test Coverage Visualization**
@@ -270,3 +372,8 @@ public updateFeatureTestStatus(testIds: string[]): void {
    - Automatic test generation based on feature definitions
    - Test templates for common patterns
    - Integration with AI tools for test creation
+
+5. **API Extensions**
+   - Extended API capability for CI/CD integration
+   - Webhook support for test status changes
+   - Scheduled test execution via API
