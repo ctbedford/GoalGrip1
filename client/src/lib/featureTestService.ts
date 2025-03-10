@@ -32,7 +32,17 @@ export class FeatureTestService {
     this.featureTestMap = {};
     this.testFeatureMap.clear();
     
-    // Explicit mappings for core features
+    // First, use explicit feature names from tests
+    tests.forEach(test => {
+      if (test.featureName) {
+        // Initialize array if it doesn't exist
+        this.featureTestMap[test.featureName] = this.featureTestMap[test.featureName] || [];
+        this.featureTestMap[test.featureName].push(test.id);
+        this.testFeatureMap.set(test.id, test.featureName);
+      }
+    });
+    
+    // Next, apply explicit mappings for core features (only for tests that don't already have a mapping)
     const explicitMappings: Record<string, string[]> = {
       'Dashboard': ['dashboard-stats', 'dashboard-ui', 'dashboard-api'],
       'Goal Creation': ['goal-creation', 'create-goal-modal'],
@@ -51,15 +61,15 @@ export class FeatureTestService {
       'Feature Dashboard': ['feature-dashboard']
     };
     
-    // First apply explicit mappings
+    // Apply explicit mappings
     Object.entries(explicitMappings).forEach(([featureName, testIds]) => {
       // Initialize or get the existing array
       this.featureTestMap[featureName] = this.featureTestMap[featureName] || [];
       
       // Add all the test IDs to this feature
       testIds.forEach(testId => {
-        // Only add if the test exists
-        if (tests.some(test => test.id === testId)) {
+        // Only add if the test exists and isn't already mapped
+        if (tests.some(test => test.id === testId) && !this.testFeatureMap.has(testId)) {
           this.featureTestMap[featureName].push(testId);
           this.testFeatureMap.set(testId, featureName);
         }
@@ -121,6 +131,21 @@ export class FeatureTestService {
         }
       }
     });
+    
+    // Log mapping results for debugging
+    console.log('Feature test mapping completed:', {
+      featureCount: Object.keys(this.featureTestMap).length,
+      testCount: this.testFeatureMap.size,
+      unmappedTests: tests.filter(t => !this.testFeatureMap.has(t.id)).map(t => t.id)
+    });
+  }
+  
+  /**
+   * Public method to force a refresh of the mapping
+   */
+  public refreshMapping(): void {
+    this.initializeMapping();
+    this.notifyListeners();
   }
   
   /**

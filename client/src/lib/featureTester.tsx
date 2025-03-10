@@ -323,7 +323,19 @@ export async function runFeatureTest(testId: string): Promise<FeatureTestResult>
     
     // If passed, mark the feature as tested
     if (success) {
-      markFeatureTested(test.id, true);
+      // Get the associated feature name
+      const featureName = test.featureName || getFeatureNameFromTest(test);
+      if (featureName) {
+        markFeatureTested(featureName, true, `Test executed successfully: ${test.name}`);
+      }
+      
+      // Update the feature test service
+      import('./featureTestService').then(module => {
+        const { featureTestService } = module;
+        if (typeof featureTestService.updateFeatureTestStatus === 'function') {
+          featureTestService.updateFeatureTestStatus([test.id]);
+        }
+      });
     }
     
     // Complete the execution context
@@ -439,6 +451,14 @@ export async function runAllFeatureTests(): Promise<FeatureTestResult[]> {
     failCount,
     skipCount,
     results
+  });
+  
+  // Update the feature test service after running all tests
+  import('./featureTestService').then(module => {
+    const { featureTestService } = module;
+    if (typeof featureTestService.updateFeatureTestStatus === 'function') {
+      featureTestService.updateFeatureTestStatus(results.map(r => r.id));
+    }
   });
   
   return results;
