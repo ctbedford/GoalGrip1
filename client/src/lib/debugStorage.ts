@@ -134,8 +134,14 @@ export function clearLogs(): void {
 /**
  * Update feature test results
  */
-export function updateFeatureTestResult(testId: string, result: FeatureTestResult): void {
-  featureTestResults[testId] = result;
+export function updateFeatureTestResult(testId: string, result: FeatureTestResult | Record<string, FeatureTestResult>): void {
+  if (testId === 'all' && typeof result !== 'string' && !('id' in result)) {
+    // Handle the case where result is a Record<string, FeatureTestResult>
+    featureTestResults = { ...featureTestResults, ...result };
+  } else {
+    // Handle the case where result is a single FeatureTestResult
+    featureTestResults[testId] = result as FeatureTestResult;
+  }
   saveDebugStorage();
 }
 
