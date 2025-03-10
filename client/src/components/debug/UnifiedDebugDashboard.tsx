@@ -126,7 +126,7 @@ export function UnifiedDebugDashboard() {
     try {
       await runFeatureTest(testId);
     } finally {
-      completeContext(contextId, 'success');
+      if (typeof contextId === 'string') completeContext(contextId, true);
       setIsTestRunning(prev => ({ ...prev, [testId]: false }));
     }
   };
@@ -151,7 +151,7 @@ export function UnifiedDebugDashboard() {
         await runFeatureTest(test.id);
       }
     } finally {
-      completeContext(contextId, 'success');
+      if (typeof contextId === 'string') completeContext(contextId, true);
       
       // Mark all as not running
       const completedState: Record<string, boolean> = {};
@@ -169,7 +169,7 @@ export function UnifiedDebugDashboard() {
     try {
       await runAllFeatureTests();
     } finally {
-      completeContext(contextId, 'success');
+      if (typeof contextId === 'string') completeContext(contextId, true);
     }
   };
 

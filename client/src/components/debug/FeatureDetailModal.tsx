@@ -6,7 +6,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FeatureArea } from '@/lib/logger';
 import { TestStatus, runFeatureTest } from '@/lib/featureTester';
 import { useFeatureTests } from '@/hooks/use-feature-tests';
-import { LuCheckCircle2, LuXCircle, LuAlertCircle, LuClock, LuInfo, LuPlay, LuRefreshCw } from 'react-icons/lu';
+import { 
+  CheckCircle2 as LuCheckCircle2, 
+  XCircle as LuXCircle, 
+  AlertCircle as LuAlertCircle, 
+  Clock as LuClock, 
+  Info as LuInfo, 
+  Play as LuPlay, 
+  RefreshCw as LuRefreshCw 
+} from 'lucide-react';
 import { useFeatureContext } from './UnifiedDebugDashboard';
 
 interface FeatureStatus {
