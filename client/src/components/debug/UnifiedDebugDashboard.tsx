@@ -30,6 +30,7 @@ import { FeatureStatusDashboard } from './feature-status-dashboard';
 import { EnhancedLogViewer } from './enhanced-log-viewer';
 import { EnhancedApiDashboard } from './enhanced-api-dashboard';
 import { PerformanceMetricsPanel } from './performance-metrics-panel';
+import { FeatureDetailModal } from './FeatureDetailModal';
 
 // Feature context to share selected feature across components
 interface FeatureStatus {
@@ -251,8 +252,23 @@ export function UnifiedDebugDashboard() {
     }
   };
 
+  // State for modal visibility
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  
+  // Function to open feature detail modal
+  const openFeatureDetail = (feature: FeatureStatus) => {
+    selectFeature(feature);
+    setIsDetailModalOpen(true);
+  };
+  
   return (
     <FeatureContext.Provider value={featureContextValue}>
+      {/* Feature Detail Modal */}
+      <FeatureDetailModal 
+        isOpen={isDetailModalOpen}
+        onClose={() => setIsDetailModalOpen(false)}
+      />
+      
       <div className="container mx-auto p-4 space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">Unified Debug Dashboard</h1>
