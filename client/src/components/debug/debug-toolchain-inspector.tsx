@@ -19,7 +19,11 @@ import {
   FileJson,
   AlertCircle,
   Save,
-  Copy
+  Copy,
+  Terminal,
+  Play,
+  PlusCircle,
+  Clipboard
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
