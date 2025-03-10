@@ -182,11 +182,17 @@ export function FeatureStatusDashboard() {
   
   // Get feature test results if available
   const getFeatureTestData = (featureName: string) => {
-    const testResults = debugStorage.getFeatureTestResults();
-    const relevantTests = Object.values(testResults).filter(
-      test => test.name.includes(featureName) || test.description.includes(featureName)
-    );
-    return relevantTests;
+    try {
+      const testResults = debugStorage.getFeatureTestResults() || {};
+      const relevantTests = Object.values(testResults).filter(
+        test => test && test.name && test.description && 
+          (test.name.includes(featureName) || test.description.includes(featureName))
+      );
+      return relevantTests;
+    } catch (error) {
+      console.error('Error fetching test data:', error);
+      return [];
+    }
   };
 
   // Get related logs for a feature
@@ -547,7 +553,7 @@ export function FeatureStatusDashboard() {
                           <Separator />
                           <div className="space-y-2">
                             <h4 className="font-semibold">Implementation Notes</h4>
-                            {selectedFeature.notes.length > 0 ? (
+                            {selectedFeature.notes && selectedFeature.notes.length > 0 ? (
                               <ul className="space-y-2 pl-6 list-disc">
                                 {selectedFeature.notes.map((note, i) => (
                                   <li key={i}>{note}</li>
