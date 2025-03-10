@@ -4,7 +4,12 @@
  * This module provides consistent logging and debugging functionality
  * across the application, with support for different log levels,
  * feature tags, and production/development modes.
+ * 
+ * Logs are also persisted to localStorage via the debugStorage module
+ * for better debugging and QA across sessions.
  */
+
+import * as debugStorage from './debugStorage';
 
 // Log levels
 export enum LogLevel {

@@ -148,7 +148,9 @@ export class MemStorage implements IStorage {
       id, 
       currentValue: 0, 
       completed: false, 
-      createdAt: new Date()
+      createdAt: new Date(),
+      categoryId: goal.categoryId ?? null,
+      reminderFrequency: goal.reminderFrequency || 'none'
     };
     this.goals.set(id, newGoal);
     
@@ -203,7 +205,12 @@ export class MemStorage implements IStorage {
 
   async createProgressLog(log: InsertProgressLog): Promise<ProgressLog> {
     const id = this.progressLogId++;
-    const newLog: ProgressLog = { ...log, id, date: new Date() };
+    const newLog: ProgressLog = { 
+      ...log, 
+      id, 
+      date: new Date(),
+      notes: log.notes ?? null 
+    };
     this.progressLogs.set(id, newLog);
     
     // Update the goal's current value
