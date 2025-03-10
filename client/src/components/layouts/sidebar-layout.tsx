@@ -25,17 +25,17 @@ const SidebarItem = ({ icon: Icon, label, href, active }: SidebarItemProps) => {
   return (
     <li className="mb-2">
       <Link href={href}>
-        <a
+        <div
           className={cn(
-            "flex items-center px-4 py-2 text-gray-700 rounded-lg transition-colors",
+            "flex items-center px-4 py-2 text-gray-700 rounded-lg transition-colors cursor-pointer",
             active 
-              ? "bg-gray-100 text-primary-600"
-              : "hover:bg-gray-100"
+              ? "bg-gray-800 text-white"
+              : "hover:bg-gray-800 hover:text-gray-200"
           )}
         >
-          <Icon className={cn("mr-3 h-5 w-5", active ? "text-primary-600" : "text-gray-500")} />
+          <Icon className={cn("mr-3 h-5 w-5", active ? "text-white" : "text-gray-400")} />
           <span>{label}</span>
-        </a>
+        </div>
       </Link>
     </li>
   );
@@ -51,14 +51,14 @@ export const SidebarLayout: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex bg-gray-950">
       {/* Sidebar for desktop */}
       <div className={cn(
-        "bg-white shadow-lg w-64 flex-shrink-0",
+        "bg-gray-900 shadow-xl w-64 flex-shrink-0 border-r border-gray-800",
         isMobile ? "hidden" : "flex flex-col"
       )}>
-        <div className="p-4 border-b">
-          <h1 className="text-xl font-bold text-primary-600">Goal Tracker</h1>
+        <div className="p-4 border-b border-gray-800">
+          <h1 className="text-xl font-bold text-gray-100">Goal Tracker</h1>
         </div>
         
         <nav className="flex-1 p-4">
@@ -96,14 +96,14 @@ export const SidebarLayout: React.FC<{ children: React.ReactNode }> = ({ childre
           </ul>
         </nav>
         
-        <div className="p-4 border-t">
+        <div className="p-4 border-t border-gray-800">
           <div className="flex items-center">
-            <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center text-white font-semibold">
+            <div className="w-8 h-8 bg-gray-800 rounded-full flex items-center justify-center text-gray-100 font-semibold">
               JS
             </div>
             <div className="ml-3">
-              <p className="text-sm font-medium text-gray-700">John Smith</p>
-              <p className="text-xs text-gray-500">Level 3 Achiever</p>
+              <p className="text-sm font-medium text-gray-200">John Smith</p>
+              <p className="text-xs text-gray-400">Level 3 Achiever</p>
             </div>
           </div>
         </div>
@@ -111,17 +111,17 @@ export const SidebarLayout: React.FC<{ children: React.ReactNode }> = ({ childre
       
       {/* Mobile Header */}
       {isMobile && (
-        <div className="fixed top-0 left-0 right-0 bg-white z-10 border-b">
+        <div className="fixed top-0 left-0 right-0 bg-gray-900 z-10 border-b border-gray-800">
           <div className="flex items-center justify-between p-4">
-            <h1 className="text-xl font-bold text-primary-600">Goal Tracker</h1>
-            <Button variant="ghost" size="icon" onClick={toggleMobileMenu}>
+            <h1 className="text-xl font-bold text-gray-100">Goal Tracker</h1>
+            <Button variant="ghost" size="icon" onClick={toggleMobileMenu} className="text-gray-200">
               <Menu className="h-6 w-6" />
             </Button>
           </div>
           
           {/* Mobile Menu */}
           {mobileMenuOpen && (
-            <div className="bg-white border-b pb-2">
+            <div className="bg-gray-900 border-b border-gray-800 pb-2">
               <nav className="p-2">
                 <ul>
                   <SidebarItem 
@@ -156,15 +156,15 @@ export const SidebarLayout: React.FC<{ children: React.ReactNode }> = ({ childre
                   />
                 </ul>
               </nav>
-              <Separator />
+              <Separator className="bg-gray-800"/>
               <div className="p-4">
                 <div className="flex items-center">
-                  <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center text-white font-semibold">
+                  <div className="w-8 h-8 bg-gray-800 rounded-full flex items-center justify-center text-gray-100 font-semibold">
                     <User className="h-4 w-4" />
                   </div>
                   <div className="ml-3">
-                    <p className="text-sm font-medium text-gray-700">John Smith</p>
-                    <p className="text-xs text-gray-500">Level 3 Achiever</p>
+                    <p className="text-sm font-medium text-gray-200">John Smith</p>
+                    <p className="text-xs text-gray-400">Level 3 Achiever</p>
                   </div>
                 </div>
               </div>
@@ -176,7 +176,7 @@ export const SidebarLayout: React.FC<{ children: React.ReactNode }> = ({ childre
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
         <main className={cn(
-          "flex-1 p-4 md:p-6 overflow-y-auto",
+          "flex-1 p-4 md:p-6 overflow-y-auto bg-gray-950 text-gray-200",
           isMobile && "pt-16"
         )}>
           {children}
