@@ -175,7 +175,7 @@ export function registerFeatureTest(test: FeatureTest): void {
 }
 
 /**
- * Run a specific feature test with enhanced logging
+ * Run a specific feature test with enhanced logging and status tracking
  */
 export async function runFeatureTest(testId: string): Promise<FeatureTestResult> {
   const test = registeredTests.find(t => t.id === testId);
@@ -190,6 +190,11 @@ export async function runFeatureTest(testId: string): Promise<FeatureTestResult>
     };
     
     logger.error(FeatureArea.UI, `Test with ID ${testId} not found`);
+    
+    // Store the test result for consistency
+    testResults[testId] = failedResult;
+    updateFeatureTestResult(testId, failedResult);
+    
     return failedResult;
   }
   
@@ -250,12 +255,22 @@ export async function runFeatureTest(testId: string): Promise<FeatureTestResult>
         }
       );
       
+      // Store the test result
       testResults[test.id] = skippedResult;
+      updateFeatureTestResult(test.id, skippedResult);
       
       // Complete the context with skipped status
       enhancedLogger.completeContext(contextId, false, {
         status: TestStatus.SKIPPED,
         reason: `Unmet dependencies: ${unmetDependencies.join(', ')}`
+      });
+      
+      // Update feature test status via service
+      import('./featureTestService').then(module => {
+        const { featureTestService } = module;
+        if (typeof featureTestService.updateFeatureTestStatus === 'function') {
+          featureTestService.updateFeatureTestStatus([test.id]);
+        }
       });
       
       return skippedResult;
@@ -274,7 +289,9 @@ export async function runFeatureTest(testId: string): Promise<FeatureTestResult>
     contextId // Add context ID for tracing
   };
   
+  // Store running status
   testResults[test.id] = runningResult;
+  updateFeatureTestResult(test.id, runningResult);
   
   const startTime = performance.now();
   
@@ -319,24 +336,30 @@ export async function runFeatureTest(testId: string): Promise<FeatureTestResult>
       contextId // Add context ID for tracing
     };
     
+    // Store the test result
     testResults[test.id] = result;
+    updateFeatureTestResult(test.id, result);
     
-    // If passed, mark the feature as tested
-    if (success) {
-      // Get the associated feature name
-      const featureName = test.featureName || getFeatureNameFromTest(test);
-      if (featureName) {
+    // Get the associated feature name
+    const featureName = test.featureName || getFeatureNameFromTest(test);
+    
+    if (featureName) {
+      if (success) {
+        // Mark the feature as tested successfully
         markFeatureTested(featureName, true, `Test executed successfully: ${test.name}`);
+      } else {
+        // Mark the feature test as failed
+        markFeatureTested(featureName, false, `Test execution failed: ${test.name}`);
       }
-      
-      // Update the feature test service
-      import('./featureTestService').then(module => {
-        const { featureTestService } = module;
-        if (typeof featureTestService.updateFeatureTestStatus === 'function') {
-          featureTestService.updateFeatureTestStatus([test.id]);
-        }
-      });
     }
+    
+    // Update feature test status via service
+    import('./featureTestService').then(module => {
+      const { featureTestService } = module;
+      if (typeof featureTestService.updateFeatureTestStatus === 'function') {
+        featureTestService.updateFeatureTestStatus([test.id]);
+      }
+    });
     
     // Complete the execution context
     enhancedLogger.completeContext(contextId, success, { 
@@ -378,7 +401,23 @@ export async function runFeatureTest(testId: string): Promise<FeatureTestResult>
       contextId // Add context ID for tracing
     };
     
+    // Store the test result
     testResults[test.id] = result;
+    updateFeatureTestResult(test.id, result);
+    
+    // Get the associated feature name and mark test as failed
+    const featureName = test.featureName || getFeatureNameFromTest(test);
+    if (featureName) {
+      markFeatureTested(featureName, false, `Test failed with error: ${errorMessage}`);
+    }
+    
+    // Update feature test status via service
+    import('./featureTestService').then(module => {
+      const { featureTestService } = module;
+      if (typeof featureTestService.updateFeatureTestStatus === 'function') {
+        featureTestService.updateFeatureTestStatus([test.id]);
+      }
+    });
     
     // Complete the execution context with failure
     enhancedLogger.completeContext(contextId, false, { 

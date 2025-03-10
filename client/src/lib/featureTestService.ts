@@ -32,7 +32,31 @@ export class FeatureTestService {
     this.featureTestMap = {};
     this.testFeatureMap.clear();
     
-    // First, use explicit feature names from tests
+    // Create a standardized matching function to improve consistency
+    const matchTestToFeature = (test: FeatureTest, featureName: string, feature: any): boolean => {
+      // 1. Explicit matching via featureName property (highest priority)
+      if (test.featureName === featureName) return true;
+      
+      // 2. Match by area if available (high priority)
+      const featureArea = feature.area;
+      if (featureArea && test.area === featureArea) return true;
+      
+      // 3. Name-based matching with standardized normalization (medium priority)
+      const testNameNormalized = test.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const testIdNormalized = test.id.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const featureNameNormalized = featureName.toLowerCase().replace(/[^a-z0-9]/g, '');
+      
+      if (testNameNormalized.includes(featureNameNormalized) || 
+          featureNameNormalized.includes(testNameNormalized) ||
+          testIdNormalized.includes(featureNameNormalized) ||
+          featureNameNormalized.includes(testIdNormalized)) {
+        return true;
+      }
+      
+      return false;
+    };
+    
+    // First, use explicit feature names from tests (highest priority)
     tests.forEach(test => {
       if (test.featureName) {
         // Initialize array if it doesn't exist
@@ -55,7 +79,7 @@ export class FeatureTestService {
       'Category Management': ['category-creation', 'category-list'],
       'Performance Metrics': ['performance-metrics', 'memory-usage'],
       // Debug infrastructure specific mappings
-      'Debug Infrastructure': ['debug-infrastructure', 'enhanced-logger', 'api-tester', 'feature-tester'],
+      'Debug Infrastructure': ['debug-infrastructure', 'enhanced-logger', 'api-tester', 'feature-tester', 'log-viewer', 'api-dashboard', 'feature-dashboard'],
       'Log Viewer': ['log-viewer'],
       'API Dashboard': ['api-dashboard'],
       'Feature Dashboard': ['feature-dashboard']
@@ -76,7 +100,7 @@ export class FeatureTestService {
       });
     });
     
-    // Then apply automatic mappings for any remaining features/tests
+    // Map tests to features using the matching function
     Object.entries(features).forEach(([featureName, feature]) => {
       // Initialize array if it doesn't exist
       this.featureTestMap[featureName] = this.featureTestMap[featureName] || [];
@@ -86,25 +110,8 @@ export class FeatureTestService {
         // Skip if this test is already mapped to a feature
         if (this.testFeatureMap.has(test.id)) return;
         
-        // Match by area if available
-        const featureArea = (feature as any).area;
-        if (featureArea && test.area === featureArea) {
-          this.featureTestMap[featureName].push(test.id);
-          this.testFeatureMap.set(test.id, featureName);
-          return;
-        }
-        
-        // Match by name similarity (simple check)
-        const testNameLower = test.name.toLowerCase();
-        const testIdLower = test.id.toLowerCase();
-        const featureNameLower = featureName.toLowerCase();
-        
-        if (
-          testNameLower.includes(featureNameLower) || 
-          featureNameLower.includes(testNameLower) ||
-          testIdLower.includes(featureNameLower) ||
-          featureNameLower.includes(testIdLower)
-        ) {
+        // Use standardized matching function
+        if (matchTestToFeature(test, featureName, feature)) {
           this.featureTestMap[featureName].push(test.id);
           this.testFeatureMap.set(test.id, featureName);
         }
@@ -226,10 +233,31 @@ export class FeatureTestService {
         
         // Get the test result for this test
         const testResult = testResults[testId];
-        if (testResult && testResult.status === TestStatus.PASSED) {
-          // Mark the feature as tested in the logger
+        if (testResult) {
+          // Import logger dynamically to avoid circular dependencies
           import('./logger').then(loggerModule => {
-            loggerModule.markFeatureTested(featureName, true, `Test passed: ${testResult.name}`);
+            if (testResult.status === TestStatus.PASSED) {
+              // Mark the feature as tested successfully
+              loggerModule.markFeatureTested(
+                featureName, 
+                true, 
+                `Test passed: ${testResult.name}`
+              );
+            } else if (testResult.status === TestStatus.FAILED) {
+              // Mark the feature as tested but failed
+              loggerModule.markFeatureTested(
+                featureName, 
+                false, 
+                `Test failed: ${testResult.name} - ${testResult.error || 'No error details'}`
+              );
+            } else if (testResult.status === TestStatus.SKIPPED) {
+              // Log skipped tests
+              loggerModule.info(
+                FeatureArea.UI, 
+                `Test skipped for feature ${featureName}: ${testResult.name}`,
+                { testId, reason: testResult.error || 'Dependencies not satisfied' }
+              );
+            }
           });
         }
       }
