@@ -152,7 +152,8 @@ export function registerFeatureTest(test: FeatureTest): void {
     // Register the feature with the appropriate area
     logger.registerFeature(
       featureName, 
-      test.area as unknown as string, // Convert FeatureArea to string for compatibility
+      test.area, // FeatureArea is directly compatible
+      false, // Not tested yet
       `Feature registered via test: ${test.name}`
     );
     
