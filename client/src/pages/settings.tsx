@@ -200,7 +200,7 @@ const SettingsPage: React.FC = () => {
                         <Label htmlFor="name" className="text-gray-400">Full Name</Label>
                         <Input 
                           id="name" 
-                          value={user.name} 
+                          defaultValue={user.name} 
                           className="bg-gray-900 border-gray-800 text-gray-100"
                         />
                       </div>
@@ -208,7 +208,7 @@ const SettingsPage: React.FC = () => {
                         <Label htmlFor="username" className="text-gray-400">Username</Label>
                         <Input 
                           id="username" 
-                          value={user.username} 
+                          defaultValue={user.username} 
                           className="bg-gray-900 border-gray-800 text-gray-100"
                         />
                       </div>
