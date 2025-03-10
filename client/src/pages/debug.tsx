@@ -20,6 +20,7 @@ import { FeatureTester } from '@/lib/featureTester';
 import logger, { FeatureArea, LogLevel } from '@/lib/logger';
 import apiTester from '@/lib/apiTester';
 import * as debugStorage from '@/lib/debugStorage';
+import { registerDebugTests } from '@/lib/tests/debug-components';
 import { MarkdownViewer } from '@/components/debug/markdown-viewer';
 import { FeatureStatusDashboard } from '@/components/debug/feature-status-dashboard';
 import { EnhancedLogViewer } from '@/components/debug/enhanced-log-viewer';
@@ -191,10 +192,15 @@ const DebugPage: React.FC = () => {
     }
   };
   
-  // Initialize log interception and load persisted logs on first render
+  // Initialize log interception, load persisted logs, and register debug tests
   React.useEffect(() => {
     interceptLogs();
     loadPersistedLogs();
+    
+    // Register the debug component tests
+    if (typeof registerDebugTests === 'function') {
+      registerDebugTests();
+    }
   }, []);
   
   return (

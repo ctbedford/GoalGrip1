@@ -4,10 +4,14 @@
  * This module provides tests for verifying the functionality of the debug
  * components, including the enhanced logger, API tester, feature tester,
  * and debug UI components.
+ * 
+ * Note: These tests are designed to verify the debug infrastructure itself,
+ * not the application features. They test that the logging, tracing, and
+ * testing components work correctly.
  */
 
 import { registerFeatureTest } from '../featureTester';
-import { FeatureArea, LogLevel } from '../logger';
+import { FeatureArea, LogLevel, registerFeature } from '../logger';
 import enhancedLogger from '../enhancedLogger';
 import * as apiTester from '../apiTester';
 import * as debugStorage from '../debugStorage';
@@ -324,8 +328,8 @@ registerFeatureTest({
       );
       
       // Mark features as implemented and tested
-      markFeatureImplemented(testFeatureId, true);
-      markFeatureTested(testFeatureId, true);
+      markFeatureImplemented(testFeatureId, "Test feature implemented");
+      markFeatureTested(testFeatureId, true, "Test feature tested");
       
       // Verify feature was marked
       const { getFeatureVerificationStatus } = await import('../logger');
@@ -455,5 +459,5 @@ export function registerDebugTests() {
   return true;
 }
 
-// Register the tests automatically
-registerDebugTests();
+// Don't register the tests automatically to avoid potential circular dependencies
+// The debug page will call registerDebugTests() when it initializes
