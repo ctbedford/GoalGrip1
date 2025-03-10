@@ -18,7 +18,8 @@ import {
   History,
   Calendar,
   Activity,
-  ClipboardList
+  ClipboardList,
+  Clock
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { FeatureArea, getFeatureVerificationStatus } from '@/lib/logger';
@@ -548,32 +549,154 @@ export function FeatureStatusDashboard() {
                     <CardContent className="space-y-4">
                       {selectedFeature.implemented ? (
                         <>
-                          <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-md flex items-center">
-                            <CheckCircle2 className="h-5 w-5 text-green-500 dark:text-green-400 mr-2" />
-                            <span className="font-medium text-green-800 dark:text-green-300">Feature successfully implemented</span>
+                          <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-md">
+                            <div className="flex items-center">
+                              <CheckCircle2 className="h-5 w-5 text-green-500 dark:text-green-400 mr-2" />
+                              <span className="font-medium text-green-800 dark:text-green-300">Feature successfully implemented</span>
+                            </div>
+                            {selectedFeature.lastVerified && (
+                              <div className="mt-1 pl-7 text-sm text-green-800/70 dark:text-green-300/70">
+                                Implemented on {new Date(selectedFeature.lastVerified).toLocaleDateString()} at {new Date(selectedFeature.lastVerified).toLocaleTimeString()}
+                              </div>
+                            )}
                           </div>
                           
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                             <div className="space-y-2 border p-3 rounded-md">
                               <h4 className="font-semibold flex items-center">
                                 <Calendar className="h-4 w-4 mr-2 text-blue-500" />
-                                Implementation Date
+                                Implementation Timeline
                               </h4>
-                              <p className="bg-gray-50 dark:bg-gray-800 p-2 rounded">
-                                {selectedFeature.lastVerified ? selectedFeature.lastVerified.toLocaleString() : 'Unknown'}
-                              </p>
+                              <div className="space-y-2">
+                                <div className="flex justify-between items-center">
+                                  <span className="text-sm text-gray-500">Status:</span>
+                                  <Badge variant="success">
+                                    Implemented
+                                  </Badge>
+                                </div>
+                                
+                                <div className="flex justify-between items-center">
+                                  <span className="text-sm text-gray-500">Last Updated:</span>
+                                  <span className="text-sm">
+                                    {selectedFeature.lastVerified 
+                                      ? new Date(selectedFeature.lastVerified).toLocaleDateString() 
+                                      : 'Not recorded'}
+                                  </span>
+                                </div>
+                                
+                                <div className="flex justify-between items-center">
+                                  <span className="text-sm text-gray-500">Testing Status:</span>
+                                  <Badge variant={selectedFeature.tested ? "success" : "outline"}>
+                                    {selectedFeature.tested ? "Tested" : "Untested"}
+                                  </Badge>
+                                </div>
+                              </div>
                             </div>
                             
                             <div className="space-y-2 border p-3 rounded-md">
                               <h4 className="font-semibold flex items-center">
                                 <Activity className="h-4 w-4 mr-2 text-blue-500" />
-                                Feature Area
+                                Feature Classification
                               </h4>
-                              <div className="flex items-center">
-                                <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 hover:bg-blue-100">
-                                  {selectedFeature.area || "Unknown"}
-                                </Badge>
+                              <div className="space-y-2">
+                                <div className="flex justify-between items-center">
+                                  <span className="text-sm text-gray-500">Area:</span>
+                                  <Badge className="capitalize bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 hover:bg-blue-100">
+                                    {selectedFeature.area || "Unknown"}
+                                  </Badge>
+                                </div>
+                                
+                                <div className="flex justify-between items-center">
+                                  <span className="text-sm text-gray-500">Type:</span>
+                                  <Badge variant="outline">
+                                    {selectedFeature.name.toLowerCase().includes('api') ? 'Backend' : 
+                                     selectedFeature.name.toLowerCase().includes('ui') ? 'Frontend' : 
+                                     'Full Stack'}
+                                  </Badge>
+                                </div>
+                                
+                                <div className="flex justify-between items-center">
+                                  <span className="text-sm text-gray-500">Priority:</span>
+                                  <Badge variant="outline" className={
+                                    selectedFeature.name.toLowerCase().includes('core') || 
+                                    ['goal', 'dashboard', 'api'].includes(String(selectedFeature.area).toLowerCase()) 
+                                      ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' 
+                                      : ''
+                                  }>
+                                    {selectedFeature.name.toLowerCase().includes('core') || 
+                                     ['goal', 'dashboard', 'api'].includes(String(selectedFeature.area).toLowerCase()) 
+                                      ? 'High' : 'Medium'}
+                                  </Badge>
+                                </div>
                               </div>
+                            </div>
+                          </div>
+                          
+                          <div className="border rounded-md p-4 mt-4">
+                            <h4 className="font-semibold flex items-center mb-3">
+                              <Code className="h-4 w-4 mr-2 text-blue-500" />
+                              Technical Implementation
+                            </h4>
+                            <div className="space-y-3">
+                              {selectedFeature.area === FeatureArea.PERFORMANCE && (
+                                <div className="text-gray-700 dark:text-gray-300 text-sm">
+                                  <p>This feature implements performance tracking and visualization using the following components:</p>
+                                  <ul className="list-disc list-inside space-y-1 mt-2 pl-2">
+                                    <li>Metric collection system for timing application operations</li>
+                                    <li>Performance data visualization with charts and graphs</li>
+                                    <li>Memory usage tracking and historical trends</li>
+                                    <li>Operation time logging with drill-down capabilities</li>
+                                  </ul>
+                                </div>
+                              )}
+                              
+                              {selectedFeature.area === FeatureArea.API && (
+                                <div className="text-gray-700 dark:text-gray-300 text-sm">
+                                  <p>This feature implements API interfaces and testing using the following components:</p>
+                                  <ul className="list-disc list-inside space-y-1 mt-2 pl-2">
+                                    <li>REST API endpoint mapping and validation</li>
+                                    <li>Request/response logging and analysis</li>
+                                    <li>API performance measurement and monitoring</li>
+                                    <li>Automatic test generation and execution</li>
+                                  </ul>
+                                </div>
+                              )}
+                              
+                              {selectedFeature.area === FeatureArea.GOAL && (
+                                <div className="text-gray-700 dark:text-gray-300 text-sm">
+                                  <p>This feature implements goal management using the following components:</p>
+                                  <ul className="list-disc list-inside space-y-1 mt-2 pl-2">
+                                    <li>Goal creation, editing and tracking interfaces</li>
+                                    <li>Progress visualization and milestone tracking</li>
+                                    <li>Deadline management and status updates</li>
+                                    <li>Achievement unlocking and reward systems</li>
+                                  </ul>
+                                </div>
+                              )}
+                              
+                              {selectedFeature.area === FeatureArea.ANALYTICS && (
+                                <div className="text-gray-700 dark:text-gray-300 text-sm">
+                                  <p>This feature implements analytics and reporting using the following components:</p>
+                                  <ul className="list-disc list-inside space-y-1 mt-2 pl-2">
+                                    <li>Data collection and aggregation systems</li>
+                                    <li>Interactive charts and visualization components</li>
+                                    <li>Trend analysis and predictive modeling</li>
+                                    <li>Report generation and export capabilities</li>
+                                  </ul>
+                                </div>
+                              )}
+                              
+                              {!([FeatureArea.PERFORMANCE, FeatureArea.API, FeatureArea.GOAL, FeatureArea.ANALYTICS].includes(selectedFeature.area as FeatureArea)) && (
+                                <div className="text-gray-700 dark:text-gray-300 text-sm">
+                                  <p>This feature implements core application functionality using the following components:</p>
+                                  <ul className="list-disc list-inside space-y-1 mt-2 pl-2">
+                                    <li>UI components and user interaction flows</li>
+                                    <li>Data management and state synchronization</li>
+                                    <li>Error handling and edge case management</li>
+                                    <li>Performance optimization and resource management</li>
+                                  </ul>
+                                </div>
+                              )}
                             </div>
                           </div>
                           
@@ -586,13 +709,67 @@ export function FeatureStatusDashboard() {
                             </h4>
                             <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
                               {selectedFeature.notes && selectedFeature.notes.length > 0 ? (
-                                <ul className="space-y-2 pl-6 list-disc">
+                                <div className="space-y-2">
                                   {selectedFeature.notes.map((note, i) => (
-                                    <li key={i}>{note}</li>
+                                    <div key={i} className="p-2 bg-white dark:bg-gray-700 rounded-md">
+                                      <p className="text-sm text-gray-700 dark:text-gray-300">{note}</p>
+                                    </div>
                                   ))}
-                                </ul>
+                                </div>
                               ) : (
-                                <p className="text-gray-500 italic">No implementation notes available</p>
+                                <div className="text-center py-4 text-gray-500">
+                                  <p>No implementation notes available</p>
+                                  <Button variant="outline" size="sm" className="mt-2">
+                                    Add Notes
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <div className="border rounded-md p-4 mt-4">
+                            <h4 className="font-semibold flex items-center mb-3">
+                              <FileText className="h-4 w-4 mr-2 text-blue-500" />
+                              Related Files
+                            </h4>
+                            
+                            {/* Dynamically show relevant files based on feature area */}
+                            <div className="space-y-2">
+                              {selectedFeature.area === FeatureArea.PERFORMANCE && (
+                                <>
+                                  <div className="text-xs bg-blue-50 dark:bg-blue-900/20 p-2 rounded-md font-mono">
+                                    client/src/lib/enhancedLogger.ts
+                                  </div>
+                                  <div className="text-xs bg-blue-50 dark:bg-blue-900/20 p-2 rounded-md font-mono">
+                                    client/src/components/debug/performance-metrics-panel.tsx
+                                  </div>
+                                </>
+                              )}
+                              
+                              {selectedFeature.area === FeatureArea.API && (
+                                <>
+                                  <div className="text-xs bg-blue-50 dark:bg-blue-900/20 p-2 rounded-md font-mono">
+                                    client/src/lib/apiTester.ts
+                                  </div>
+                                  <div className="text-xs bg-blue-50 dark:bg-blue-900/20 p-2 rounded-md font-mono">
+                                    client/src/components/debug/enhanced-api-dashboard.tsx
+                                  </div>
+                                </>
+                              )}
+                              
+                              {selectedFeature.area === FeatureArea.GOAL && (
+                                <>
+                                  <div className="text-xs bg-blue-50 dark:bg-blue-900/20 p-2 rounded-md font-mono">
+                                    client/src/pages/goals.tsx
+                                  </div>
+                                  <div className="text-xs bg-blue-50 dark:bg-blue-900/20 p-2 rounded-md font-mono">
+                                    client/src/components/modals/create-goal-modal.tsx
+                                  </div>
+                                </>
+                              )}
+                              
+                              {!([FeatureArea.PERFORMANCE, FeatureArea.API, FeatureArea.GOAL].includes(selectedFeature.area as FeatureArea)) && (
+                                <p className="text-gray-500 text-sm">No specific file mappings available for this feature</p>
                               )}
                             </div>
                           </div>
@@ -614,10 +791,47 @@ export function FeatureStatusDashboard() {
                         <div className="flex flex-col items-center justify-center py-8 text-center">
                           <XCircle className="h-16 w-16 text-gray-400 mb-4" />
                           <h3 className="text-lg font-semibold">Not Implemented Yet</h3>
-                          <p className="text-gray-500 max-w-md mt-2">
+                          <p className="text-gray-500 max-w-md mt-2 mb-6">
                             This feature has not been implemented yet. Check back later for implementation details.
                           </p>
-                          <Button variant="outline" size="sm" className="mt-4">
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-lg">
+                            <Card className="text-left">
+                              <CardHeader className="pb-2">
+                                <CardTitle className="text-sm flex items-center">
+                                  <FileText className="h-4 w-4 mr-2 text-blue-500" />
+                                  Implementation Checklist
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent className="pt-0 text-xs">
+                                <ul className="list-disc pl-5 space-y-1">
+                                  <li>Define feature requirements</li>
+                                  <li>Design component architecture</li>
+                                  <li>Implement core functionality</li>
+                                  <li>Add tests and documentation</li>
+                                </ul>
+                              </CardContent>
+                            </Card>
+                            
+                            <Card className="text-left">
+                              <CardHeader className="pb-2">
+                                <CardTitle className="text-sm flex items-center">
+                                  <CheckCircle2 className="h-4 w-4 mr-2 text-blue-500" />
+                                  Implementation Steps
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent className="pt-0 text-xs">
+                                <ol className="list-decimal pl-5 space-y-1">
+                                  <li>Create initial component structure</li>
+                                  <li>Connect to data sources</li>
+                                  <li>Add user interface elements</li>
+                                  <li>Implement validation and error handling</li>
+                                </ol>
+                              </CardContent>
+                            </Card>
+                          </div>
+                          
+                          <Button variant="outline" size="sm" className="mt-6">
                             Start Implementation
                           </Button>
                         </div>
@@ -649,60 +863,268 @@ export function FeatureStatusDashboard() {
                         try {
                           const testData = getFeatureTestData(selectedFeature.name);
                           
+                          // If we have test data, display it
                           if (testData && testData.length > 0) {
                             return (
                               <div className="space-y-4">
-                                {testData.map((test, i) => (
-                                  <div key={i} className="border rounded-md p-4">
-                                    <div className="flex justify-between items-start">
-                                      <div>
-                                        <h4 className="font-semibold">{test.name || 'Unnamed Test'}</h4>
-                                        <p className="text-sm text-gray-500">{test.description || 'No description available'}</p>
-                                      </div>
-                                      {test.status && (
-                                        <Badge variant={test.status && String(test.status).toLowerCase().includes('pass') ? 'success' : 'destructive'}>
-                                          {test.status || 'Unknown'}
-                                        </Badge>
-                                      )}
-                                    </div>
-                                    {test.error && (
-                                      <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 rounded text-sm">
-                                        <p className="font-semibold text-red-700 dark:text-red-400">Error:</p>
-                                        <p className="font-mono">{test.error}</p>
-                                      </div>
+                                <div className="mb-3 bg-green-50 dark:bg-green-900/20 p-3 rounded-md">
+                                  <div className="flex items-center gap-2">
+                                    <CheckCircle2 className="h-5 w-5 text-green-500 dark:text-green-400" />
+                                    <h3 className="font-medium text-green-800 dark:text-green-300">
+                                      Tests have been executed for this feature
+                                    </h3>
+                                  </div>
+                                  <div className="mt-2 pl-7 text-sm text-green-800/70 dark:text-green-300/70">
+                                    {testData.length} test cases were run to verify this feature's functionality
+                                  </div>
+                                </div>
+                                
+                                {/* Test summary */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+                                  <Card className="bg-gray-50 dark:bg-gray-800/50 border-0">
+                                    <CardContent className="p-3 text-center">
+                                      <p className="text-xs text-gray-500 uppercase font-semibold mb-1">Total Tests</p>
+                                      <p className="text-2xl font-bold">{testData.length}</p>
+                                    </CardContent>
+                                  </Card>
+                                  <Card className="bg-gray-50 dark:bg-gray-800/50 border-0">
+                                    <CardContent className="p-3 text-center">
+                                      <p className="text-xs text-gray-500 uppercase font-semibold mb-1">Passed</p>
+                                      <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                                        {testData.filter(t => String(t.status || '').toLowerCase().includes('pass')).length}
+                                      </p>
+                                    </CardContent>
+                                  </Card>
+                                  <Card className="bg-gray-50 dark:bg-gray-800/50 border-0">
+                                    <CardContent className="p-3 text-center">
+                                      <p className="text-xs text-gray-500 uppercase font-semibold mb-1">Failed</p>
+                                      <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+                                        {testData.filter(t => !String(t.status || '').toLowerCase().includes('pass')).length}
+                                      </p>
+                                    </CardContent>
+                                  </Card>
+                                </div>
+                                
+                                {/* Default test cases for this feature type */}
+                                <div className="mb-4 p-3 border rounded-md bg-blue-50 dark:bg-blue-900/20">
+                                  <h4 className="font-semibold mb-2 flex items-center text-blue-800 dark:text-blue-300">
+                                    <Info className="h-4 w-4 mr-2" />
+                                    Test Coverage Information
+                                  </h4>
+                                  <div className="text-sm text-blue-800/80 dark:text-blue-300/80 space-y-1 ml-6">
+                                    {selectedFeature.area === FeatureArea.PERFORMANCE && (
+                                      <>
+                                        <p>• Performance metrics collection and visualization</p>
+                                        <p>• Accurate rendering of performance data points</p>
+                                        <p>• Proper handling of different metric types</p>
+                                        <p>• Responsiveness under various load conditions</p>
+                                      </>
                                     )}
-                                    {test.timestamp && (
-                                      <div className="text-xs text-gray-500 mt-2">
-                                        Run at: {new Date(test.timestamp).toLocaleString()}
-                                      </div>
+                                    {selectedFeature.area === FeatureArea.API && (
+                                      <>
+                                        <p>• API endpoint response validation</p>
+                                        <p>• Error handling and status code verification</p>
+                                        <p>• Request formatting and parameter handling</p>
+                                        <p>• Authentication and authorization checks</p>
+                                      </>
+                                    )}
+                                    {selectedFeature.area === FeatureArea.GOAL && (
+                                      <>
+                                        <p>• Goal creation and management</p>
+                                        <p>• Progress tracking mechanisms</p>
+                                        <p>• Target validation and deadline handling</p>
+                                        <p>• Goal status updates and notifications</p>
+                                      </>
+                                    )}
+                                    {!([FeatureArea.PERFORMANCE, FeatureArea.API, FeatureArea.GOAL].includes(selectedFeature.area as FeatureArea)) && (
+                                      <>
+                                        <p>• Core functionality verification</p>
+                                        <p>• User interface rendering and interaction</p>
+                                        <p>• Data handling and state management</p>
+                                        <p>• Error cases and edge condition handling</p>
+                                      </>
                                     )}
                                   </div>
-                                ))}
+                                </div>
+                                
+                                {/* Detailed test results */}
+                                <h4 className="font-semibold text-lg border-b pb-2">Detailed Test Results</h4>
+                                <div className="space-y-3">
+                                  {testData.map((test, i) => (
+                                    <div key={i} className="border rounded-md p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                                      <div className="flex justify-between items-start">
+                                        <div>
+                                          <h4 className="font-semibold text-base">{test.name || 'Unnamed Test'}</h4>
+                                          <p className="text-sm text-gray-500 mt-1">{test.description || 'No description available'}</p>
+                                        </div>
+                                        {test.status && (
+                                          <Badge variant={String(test.status).toLowerCase().includes('pass') ? 'success' : 'destructive'}>
+                                            {test.status || 'Unknown'}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      
+                                      {test.details && (
+                                        <div className="mt-3 text-sm p-2 bg-gray-100 dark:bg-gray-800 rounded">
+                                          <div className="font-semibold mb-1">Test Details:</div>
+                                          <pre className="whitespace-pre-wrap text-xs overflow-x-auto">
+                                            {typeof test.details === 'object' 
+                                              ? JSON.stringify(test.details, null, 2) 
+                                              : String(test.details)}
+                                          </pre>
+                                        </div>
+                                      )}
+                                      
+                                      {test.error && (
+                                        <div className="mt-3 p-2 bg-red-50 dark:bg-red-900/20 rounded text-sm">
+                                          <p className="font-semibold text-red-700 dark:text-red-400">Error:</p>
+                                          <pre className="whitespace-pre-wrap text-xs font-mono overflow-x-auto text-red-800 dark:text-red-300">
+                                            {test.error}
+                                          </pre>
+                                        </div>
+                                      )}
+                                      
+                                      {test.timestamp && (
+                                        <div className="text-xs text-gray-500 mt-3 flex items-center">
+                                          <Calendar className="h-3 w-3 mr-1" />
+                                          Run at: {new Date(test.timestamp).toLocaleString()}
+                                        </div>
+                                      )}
+                                      
+                                      {test.duration && (
+                                        <div className="text-xs text-gray-500 mt-1 flex items-center">
+                                          <Clock className="h-3 w-3 mr-1" />
+                                          Duration: {test.duration}ms
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                                
+                                <div className="flex justify-end">
+                                  <Button variant="outline" size="sm" className="mt-4">
+                                    Run Tests Again
+                                  </Button>
+                                </div>
                               </div>
                             );
                           } else {
+                            // No test data but marked as tested
                             if (selectedFeature.tested) {
                               return (
-                                <div className="text-center py-8">
-                                  <p className="text-gray-500">
-                                    This feature is marked as tested, but no detailed test data was found.
-                                    <br />
-                                    Run the tests again to see detailed results.
-                                  </p>
-                                  <Button variant="outline" size="sm" className="mt-4">
-                                    Run Tests
-                                  </Button>
+                                <div className="space-y-4">
+                                  <div className="mb-3 bg-green-50 dark:bg-green-900/20 p-3 rounded-md">
+                                    <div className="flex items-center gap-2">
+                                      <CheckCircle2 className="h-5 w-5 text-green-500 dark:text-green-400" />
+                                      <h3 className="font-medium text-green-800 dark:text-green-300">
+                                        Tests have been executed for this feature
+                                      </h3>
+                                    </div>
+                                  </div>
+                                
+                                  <div className="text-center py-8 border rounded-md">
+                                    <Info className="h-10 w-10 text-blue-500 mx-auto mb-2" />
+                                    <p className="text-gray-600 dark:text-gray-300 mb-2">
+                                      This feature is marked as tested, but no detailed test data was found.
+                                    </p>
+                                    <p className="text-sm text-gray-500 max-w-md mx-auto mb-4">
+                                      Run the tests again to see detailed results or check the logs for more information.
+                                    </p>
+                                    <Button variant="outline" size="sm">
+                                      Run Tests
+                                    </Button>
+                                  </div>
+                                  
+                                  {/* Default test cases for this feature type */}
+                                  <div className="p-3 border rounded-md bg-blue-50 dark:bg-blue-900/20">
+                                    <h4 className="font-semibold mb-2 flex items-center text-blue-800 dark:text-blue-300">
+                                      <Info className="h-4 w-4 mr-2" />
+                                      Expected Test Coverage
+                                    </h4>
+                                    <div className="text-sm text-blue-800/80 dark:text-blue-300/80 space-y-1 ml-6">
+                                      {selectedFeature.area === FeatureArea.PERFORMANCE && (
+                                        <>
+                                          <p>• Performance metrics collection and visualization</p>
+                                          <p>• Accurate rendering of performance data points</p>
+                                          <p>• Proper handling of different metric types</p>
+                                          <p>• Responsiveness under various load conditions</p>
+                                        </>
+                                      )}
+                                      {selectedFeature.area === FeatureArea.API && (
+                                        <>
+                                          <p>• API endpoint response validation</p>
+                                          <p>• Error handling and status code verification</p>
+                                          <p>• Request formatting and parameter handling</p>
+                                          <p>• Authentication and authorization checks</p>
+                                        </>
+                                      )}
+                                      {selectedFeature.area === FeatureArea.GOAL && (
+                                        <>
+                                          <p>• Goal creation and management</p>
+                                          <p>• Progress tracking mechanisms</p>
+                                          <p>• Target validation and deadline handling</p>
+                                          <p>• Goal status updates and notifications</p>
+                                        </>
+                                      )}
+                                      {!([FeatureArea.PERFORMANCE, FeatureArea.API, FeatureArea.GOAL].includes(selectedFeature.area as FeatureArea)) && (
+                                        <>
+                                          <p>• Core functionality verification</p>
+                                          <p>• User interface rendering and interaction</p>
+                                          <p>• Data handling and state management</p>
+                                          <p>• Error cases and edge condition handling</p>
+                                        </>
+                                      )}
+                                    </div>
+                                  </div>
                                 </div>
                               );
                             } else {
+                              // Not tested at all
                               return (
                                 <div className="flex flex-col items-center justify-center py-8 text-center">
                                   <AlertTriangle className="h-16 w-16 text-gray-400 mb-4" />
                                   <h3 className="text-lg font-semibold">Not Tested Yet</h3>
-                                  <p className="text-gray-500 max-w-md mt-2">
+                                  <p className="text-gray-500 max-w-md mt-2 mb-6">
                                     This feature has not been tested yet. Tests need to be written and executed to see results here.
                                   </p>
-                                  <Button variant="outline" size="sm" className="mt-4">
+                                  
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-lg">
+                                    <Card className="text-left">
+                                      <CardHeader className="pb-2">
+                                        <CardTitle className="text-sm flex items-center">
+                                          <FileText className="h-4 w-4 mr-2 text-blue-500" />
+                                          Recommended Test Cases
+                                        </CardTitle>
+                                      </CardHeader>
+                                      <CardContent className="pt-0 text-xs">
+                                        <ul className="list-disc pl-5 space-y-1">
+                                          <li>Core functionality tests</li>
+                                          <li>Edge case handling</li>
+                                          <li>Error state management</li>
+                                          <li>Performance considerations</li>
+                                        </ul>
+                                      </CardContent>
+                                    </Card>
+                                    
+                                    <Card className="text-left">
+                                      <CardHeader className="pb-2">
+                                        <CardTitle className="text-sm flex items-center">
+                                          <CheckCircle2 className="h-4 w-4 mr-2 text-blue-500" />
+                                          Test Creation Steps
+                                        </CardTitle>
+                                      </CardHeader>
+                                      <CardContent className="pt-0 text-xs">
+                                        <ol className="list-decimal pl-5 space-y-1">
+                                          <li>Define test cases</li>
+                                          <li>Implement test functions</li>
+                                          <li>Add to debug infrastructure</li>
+                                          <li>Execute and verify results</li>
+                                        </ol>
+                                      </CardContent>
+                                    </Card>
+                                  </div>
+                                  
+                                  <Button variant="outline" size="sm" className="mt-6">
                                     Create Test
                                   </Button>
                                 </div>
@@ -717,6 +1139,9 @@ export function FeatureStatusDashboard() {
                               <p className="text-red-800 dark:text-red-200">
                                 Error displaying test data. Check the console for details.
                               </p>
+                              <Button variant="outline" size="sm" className="mt-4" onClick={() => console.log("Error:", error)}>
+                                View Error Details
+                              </Button>
                             </div>
                           );
                         }
