@@ -451,7 +451,7 @@ registerFeatureTest({
       }
       
       // Mark as implemented if passes
-      markFeatureImplemented('dashboard-stats', true);
+      markFeatureImplemented('dashboard-stats', 'Passed API test');
       
       return true;
     } catch (error) {
@@ -556,7 +556,7 @@ registerFeatureTest({
       
       // Mark as implemented if passes
       if (success) {
-        markFeatureImplemented('goal-creation', true);
+        markFeatureImplemented('goal-creation', 'Passed goal creation test');
       }
       
       return success;
@@ -741,7 +741,7 @@ registerFeatureTest({
       }
       
       // Mark as implemented if passes
-      markFeatureImplemented('goal-progress-tracking', true);
+      markFeatureImplemented('goal-progress-tracking', 'Passed progress tracking test');
       
       return true;
     } catch (error) {
