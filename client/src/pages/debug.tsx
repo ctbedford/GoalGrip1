@@ -38,7 +38,7 @@ interface LogEntry {
 }
 
 const DebugPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('feature-status');
+  const [activeTab, setActiveTab] = useState('unified-dashboard');
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [apiTestReport, setApiTestReport] = useState<string>('');
   const [isApiTesting, setIsApiTesting] = useState(false);
@@ -220,10 +220,10 @@ const DebugPage: React.FC = () => {
       
       {/* Debug Interface */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-6 w-full">
-          <TabsTrigger value="feature-status">
+        <TabsList className="grid grid-cols-5 w-full">
+          <TabsTrigger value="unified-dashboard">
             <ActivitySquare className="h-4 w-4 mr-2" />
-            Feature Status
+            Feature Dashboard
           </TabsTrigger>
           <TabsTrigger value="logs">
             <Terminal className="h-4 w-4 mr-2" />
@@ -237,19 +237,56 @@ const DebugPage: React.FC = () => {
             <BarChart4 className="h-4 w-4 mr-2" />
             Performance
           </TabsTrigger>
-          <TabsTrigger value="feature-tests">
-            <CheckCircle2 className="h-4 w-4 mr-2" />
-            Feature Tests
-          </TabsTrigger>
           <TabsTrigger value="docs">
             <FileText className="h-4 w-4 mr-2" />
             Documentation
           </TabsTrigger>
         </TabsList>
         
-        {/* Feature Implementation Status Dashboard */}
-        <TabsContent value="feature-status" className="mt-4">
-          <FeatureStatusDashboard />
+        {/* Unified Feature Dashboard - combines feature status and testing */}
+        <TabsContent value="unified-dashboard" className="mt-4">
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <CardTitle className="text-xl">
+                  <CheckCircle2 className="h-5 w-5 inline mr-2 text-green-500" />
+                  Unified Feature Dashboard
+                </CardTitle>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => {
+                    // This button will be visible to run all tests directly from the dashboard view
+                    logger.info(FeatureArea.UI, "Initiated running all tests from unified dashboard");
+                  }}
+                >
+                  Run All Tests
+                </Button>
+              </div>
+              <CardDescription>
+                Monitor implementation status and run tests for all application features
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Feature Status Dashboard */}
+              <div className="mb-6">
+                <FeatureStatusDashboard />
+              </div>
+              
+              {/* Feature Tests section */}
+              <div>
+                <h3 className="text-lg font-semibold mb-3 flex items-center">
+                  <CheckCircle2 className="h-4 w-4 mr-2 text-green-500" />
+                  Feature Tests
+                </h3>
+                <p className="text-gray-500 text-sm mb-4">
+                  Run tests to verify implementation and update feature status
+                </p>
+                
+                <FeatureTester />
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
         
         {/* Enhanced Log Viewer */}
@@ -267,11 +304,6 @@ const DebugPage: React.FC = () => {
           <PerformanceMetricsPanel />
         </TabsContent>
         
-        {/* Feature Tests Tab */}
-        <TabsContent value="feature-tests" className="mt-4">
-          <FeatureTester />
-        </TabsContent>
-        
         {/* Documentation Tab */}
         <TabsContent value="docs" className="mt-4">
           <MarkdownViewer />
@@ -284,9 +316,9 @@ const DebugPage: React.FC = () => {
         
         <div className="flex justify-between items-center">
           <h3 className="text-xl font-semibold text-gray-300">Legacy Debug Tools</h3>
-          <Button variant="ghost" size="sm" onClick={() => setActiveTab('feature-tests')}>
+          <Button variant="ghost" size="sm" onClick={() => setActiveTab('unified-dashboard')}>
             <ChevronRight className="h-4 w-4 mr-2" />
-            Access Legacy Tools
+            Access Feature Dashboard
           </Button>
         </div>
         
