@@ -420,3 +420,91 @@ const DebugPage: React.FC = () => {
 };
 
 export default DebugPage;
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { FeatureStatusViewer } from "@/components/debug/FeatureStatusViewer";
+
+export default function Debug() {
+  return (
+    <div className="container mx-auto py-6">
+      <h1 className="text-3xl font-bold mb-6">Debug Dashboard</h1>
+      
+      <Tabs defaultValue="features">
+        <TabsList className="mb-6">
+          <TabsTrigger value="features">Features</TabsTrigger>
+          <TabsTrigger value="tests">Tests</TabsTrigger>
+          <TabsTrigger value="logs">Logs</TabsTrigger>
+          <TabsTrigger value="api">API</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="features">
+          <FeatureStatusViewer />
+        </TabsContent>
+        
+        <TabsContent value="tests">
+          <Card>
+            <CardHeader>
+              <CardTitle>Test Dashboard</CardTitle>
+              <CardDescription>View and run tests for the application</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p>Test dashboard coming soon...</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="logs">
+          <Card>
+            <CardHeader>
+              <CardTitle>Debug Logs</CardTitle>
+              <CardDescription>View application logs</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p>Log viewer coming soon...</p>
+              <div className="mt-4 bg-gray-50 p-3 rounded font-mono text-sm">
+                curl http://localhost:5000/api/debug/logs?level=error&limit=10
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="api">
+          <Card>
+            <CardHeader>
+              <CardTitle>Debug API</CardTitle>
+              <CardDescription>Explore the debug API endpoints</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4">
+                <div>
+                  <h3 className="font-semibold mb-2">API Endpoints</h3>
+                  <div className="bg-gray-50 p-3 rounded font-mono text-sm">
+                    <div className="mb-2">GET /api/debug</div>
+                    <div className="mb-2">GET /api/debug/features</div>
+                    <div className="mb-2">GET /api/debug/features/:name</div>
+                    <div className="mb-2">GET /api/debug/tests</div>
+                    <div className="mb-2">POST /api/debug/tests/run/:id</div>
+                    <div className="mb-2">POST /api/debug/tests/run-all</div>
+                    <div className="mb-2">GET /api/debug/logs</div>
+                    <div className="mb-2">GET /api/debug/performance</div>
+                    <div className="mb-2">GET /api/debug/markdown</div>
+                    <div>GET /api/debug/markdown/:filename</div>
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="font-semibold mb-2">Example Query</h3>
+                  <div className="bg-gray-50 p-3 rounded font-mono text-sm">
+                    <div>curl -X POST http://localhost:5000/api/debug/query \<br />
+                    -H "Content-Type: application/json" \<br />
+                    -d '{"query": "getFeatureVerificationStatus()"}'</div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
