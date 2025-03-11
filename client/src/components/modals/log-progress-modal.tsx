@@ -64,15 +64,16 @@ export const LogProgressModal: React.FC<LogProgressModalProps> = ({
 
   const onSubmit = async (data: FormValues) => {
     try {
-      await apiRequest('POST', '/api/progress', {
+      await apiRequest('POST', '/api/progress-logs', {
         goalId: goal.id,
         value: data.value,
         notes: data.notes,
+        date: data.date,
       });
       
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['/api/goals'] });
-      queryClient.invalidateQueries({ queryKey: [`/api/goals/${goal.id}/progress`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/progress-logs/${goal.id}`] });
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
       
       toast({
@@ -119,7 +120,10 @@ export const LogProgressModal: React.FC<LogProgressModalProps> = ({
                         placeholder={`e.g. 2.5`}
                         className="rounded-r-none"
                         {...field}
-                        onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                        onChange={(e) => {
+                          const value = e.target.value === "" ? 0 : parseFloat(e.target.value);
+                          field.onChange(isNaN(value) ? 0 : value);
+                        }}
                       />
                     </FormControl>
                     <div className="inline-flex items-center px-3 text-gray-500 bg-gray-100 border border-l-0 border-gray-300 rounded-r-lg">
