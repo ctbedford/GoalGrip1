@@ -10,6 +10,7 @@ import {
   User,
   Bug,
   BrainCircuit,
+  FileText,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
@@ -97,6 +98,12 @@ export const SidebarLayout: React.FC<{ children: React.ReactNode }> = ({ childre
               active={location === "/achievements"} 
             />
             <SidebarItem 
+              icon={FileText} 
+              label="Notepad" 
+              href="/notepad" 
+              active={location === "/notepad"} 
+            />
+            <SidebarItem 
               icon={Settings} 
               label="Settings" 
               href="/settings" 
@@ -177,6 +184,12 @@ export const SidebarLayout: React.FC<{ children: React.ReactNode }> = ({ childre
                     label="Achievements" 
                     href="/achievements" 
                     active={location === "/achievements"} 
+                  />
+                  <SidebarItem 
+                    icon={FileText} 
+                    label="Notepad" 
+                    href="/notepad" 
+                    active={location === "/notepad"} 
                   />
                   <SidebarItem 
                     icon={Settings} 
