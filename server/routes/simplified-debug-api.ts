@@ -130,7 +130,7 @@ router.get('/features/:name', (req: Request, res: Response) => {
     }
     
     // Get related test results for this feature (placeholder)
-    const relatedTests = [];
+    const relatedTests: any[] = [];
     
     // Get related logs for this feature from server-side logger
     const logs = serverLogger.getLogs();
@@ -154,7 +154,7 @@ router.get('/features/:name', (req: Request, res: Response) => {
     console.error('Error fetching feature details:', error);
     res.status(500).json({ 
       error: 'Failed to fetch feature details',
-      details: error.message
+      details: error instanceof Error ? error.message : String(error)
     });
   }
 });
@@ -367,7 +367,96 @@ router.get('/markdown/:filename', (req: Request, res: Response) => {
     console.error(`Error reading markdown file ${req.params.filename}:`, error);
     res.status(500).json({ 
       error: 'Failed to read markdown file',
-      details: error.message
+      details: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
+/**
+ * Execute a custom debug query
+ */
+router.post('/query', (req: Request, res: Response) => {
+  try {
+    const { query } = req.body;
+    
+    if (!query) {
+      return res.status(400).json({ 
+        error: 'Missing query parameter',
+        suggestion: 'Provide a query parameter with a valid debug function call'
+      });
+    }
+
+    // For now, we'll return a predefined set of feature data
+    // since evaluating arbitrary code on the server side would be a security risk
+    if (query.includes('getFeatureVerificationStatus')) {
+      // Return the same feature data we use in the /features endpoint
+      const features: Record<string, any> = {};
+      const knownFeatures = [
+        'dashboard-stats',
+        'goal-creation',
+        'goal-progress-tracking',
+        'analytics-charts',
+        'achievements-badges',
+        'settings-profile',
+        'settings-appearance',
+        'settings-notifications',
+        'settings-security',
+        'log-viewer',
+        'debug-infrastructure',
+        'enhanced-logger',
+        'api-tester',
+        'feature-tester',
+        'api-dashboard',
+        'feature-dashboard',
+        'performance-metrics'
+      ];
+      
+      knownFeatures.forEach(featureName => {
+        features[featureName] = {
+          name: featureName,
+          implemented: true,
+          tested: false,
+          lastVerified: new Date(),
+          notes: [`Feature registered through debug infrastructure`]
+        };
+      });
+      
+      return res.json({
+        result: features,
+        query,
+        executedAt: new Date().toISOString()
+      });
+    } else if (query.includes('getLogs')) {
+      // Return logs from the server logger
+      const logs = serverLogger.getLogs();
+      return res.json({
+        result: logs,
+        query,
+        executedAt: new Date().toISOString()
+      });
+    } else if (query.includes('getTestResults')) {
+      // Return test results
+      const testResults = serverTestTypes.getTestResults();
+      return res.json({
+        result: testResults,
+        query,
+        executedAt: new Date().toISOString()
+      });
+    } else {
+      // For any other query, return a not implemented response
+      return res.json({
+        result: null,
+        query,
+        executedAt: new Date().toISOString(),
+        status: 'not_implemented',
+        message: 'This query is not currently supported by the server-side debug API'
+      });
+    }
+  } catch (error) {
+    console.error('Error executing debug query:', error);
+    res.status(500).json({ 
+      error: 'Failed to execute debug query',
+      details: error instanceof Error ? error.message : String(error)
     });
   }
 });

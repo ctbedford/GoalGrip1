@@ -1,4 +1,4 @@
-import type { Express, Request, Response, NextFunction } from "express";
+import express, { type Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import path from "path";
@@ -34,7 +34,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use(errorMiddleware);
   
   // Register the simplified Debug API router (new approach)
-  app.use('/api/debug', simplifiedDebugApiRouter);
+  // Make sure body parsing middleware is applied before the router
+  app.use('/api/debug', express.json({ strict: false }), simplifiedDebugApiRouter);
 
   // ==== User Routes ====
   app.post('/api/users', async (req, res) => {
