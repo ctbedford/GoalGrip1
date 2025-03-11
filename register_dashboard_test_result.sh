@@ -27,7 +27,7 @@ echo $FEATURE_STATUS | jq .
 # Send test result to the debug API
 echo "Update result:"
 UPDATE_RESULT=$(curl -s -X POST -H "Content-Type: application/json" \
-  -d "{\"query\": \"updateFeatureTestStatus\", \"featureName\": \"$FEATURE_NAME\", \"tested\": true, \"testResult\": $TEST_RESULT}" \
+  -d "{\"query\": \"updateFeatureTestStatus\", \"parameters\": {\"featureName\": \"$FEATURE_NAME\", \"tested\": true, \"testResult\": $TEST_RESULT}}" \
   http://localhost:5000/api/debug/query)
 echo $UPDATE_RESULT | jq .
 
