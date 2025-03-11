@@ -22,6 +22,7 @@ router.get('/', (req: Request, res: Response) => {
       '/api/debug/performance': 'Get performance metrics',
       '/api/debug/markdown': 'List available markdown documentation files',
       '/api/debug/markdown/:filename': 'Get content of a specific markdown file',
+      '/api/debug/query': 'Execute a custom debug query',
     },
     documentationUrl: '/api/debug/markdown/DEBUG_INFRASTRUCTURE.md'
   });
