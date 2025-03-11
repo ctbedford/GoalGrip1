@@ -158,7 +158,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch progress logs" });
     }
   });
+  
+  app.get('/api/progress-logs/:goalId', requireAuth, async (req, res) => {
+    try {
+      const goalId = parseInt(req.params.goalId);
+      const progressLogs = await storage.getProgressLogs(goalId);
+      res.json(progressLogs);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch progress logs" });
+    }
+  });
 
+  app.post('/api/progress-logs', requireAuth, async (req, res) => {
+    try {
+      // Validate with Zod schema
+      const progressData = progressLogFormSchema.parse(req.body);
+      
+      // Create the progress log
+      const newLog = await storage.createProgressLog({
+        goalId: progressData.goalId,
+        value: progressData.value,
+        notes: progressData.notes,
+        // If date is provided in request, use it
+        ...(req.body.date && { date: new Date(req.body.date) })
+      });
+      
+      res.status(201).json(newLog);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json(formatZodError(error));
+      }
+      res.status(500).json(internalError("Failed to log progress"));
+    }
+  });
+  
+  // Keep the old endpoint for backward compatibility
   app.post('/api/progress', requireAuth, async (req, res) => {
     try {
       // Validate with Zod schema
@@ -168,7 +202,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const newLog = await storage.createProgressLog({
         goalId: progressData.goalId,
         value: progressData.value,
-        notes: progressData.notes
+        notes: progressData.notes,
+        // If date is provided in request, use it
+        ...(req.body.date && { date: new Date(req.body.date) })
       });
       
       res.status(201).json(newLog);
