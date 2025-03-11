@@ -9,12 +9,14 @@ import Achievements from "@/pages/achievements";
 import Settings from "@/pages/settings";
 import Debug from "@/pages/debug";
 import NotFound from "@/pages/not-found";
+import Mantra from "@/pages/mantra";
 
 function Router() {
   return (
     <SidebarLayout>
       <Switch>
-        <Route path="/" component={Dashboard} />
+        <Route path="/" component={Mantra} />
+        <Route path="/dashboard" component={Dashboard} />
         <Route path="/goals" component={Goals} />
         <Route path="/analytics" component={Analytics} />
         <Route path="/achievements" component={Achievements} />

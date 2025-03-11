@@ -9,6 +9,7 @@ import {
   Menu,
   User,
   Bug,
+  BrainCircuit,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
@@ -66,10 +67,16 @@ export const SidebarLayout: React.FC<{ children: React.ReactNode }> = ({ childre
         <nav className="flex-1 p-4">
           <ul>
             <SidebarItem 
-              icon={LayoutDashboard} 
-              label="Dashboard" 
+              icon={BrainCircuit} 
+              label="Mantra" 
               href="/" 
               active={location === "/"} 
+            />
+            <SidebarItem 
+              icon={LayoutDashboard} 
+              label="Dashboard" 
+              href="/dashboard" 
+              active={location === "/dashboard"} 
             />
             <SidebarItem 
               icon={Flag} 
@@ -142,10 +149,16 @@ export const SidebarLayout: React.FC<{ children: React.ReactNode }> = ({ childre
               <nav className="p-2">
                 <ul>
                   <SidebarItem 
-                    icon={LayoutDashboard} 
-                    label="Dashboard" 
+                    icon={BrainCircuit} 
+                    label="Mantra" 
                     href="/" 
                     active={location === "/"} 
+                  />
+                  <SidebarItem 
+                    icon={LayoutDashboard} 
+                    label="Dashboard" 
+                    href="/dashboard" 
+                    active={location === "/dashboard"} 
                   />
                   <SidebarItem 
                     icon={Flag} 
