@@ -229,7 +229,7 @@ export function getRegisteredTests(): FeatureTest[] {
   return [...registeredTests];
 }
 
-// Register some basic tests for the goal system
+// Register tests for the goal system
 registerFeatureTest({
   id: "goal-creation",
   name: "Goal Creation Test",
@@ -237,9 +237,74 @@ registerFeatureTest({
   area: FeatureArea.GOAL,
   featureName: "goal-creation",
   async test(contextId?) {
-    // In a real implementation, this would test the actual functionality
-    // For now, just return success
-    return true;
+    try {
+      // Start a context for logging
+      const context = contextId || `test-goal-creation-${Date.now()}`;
+      
+      // Create a unique test goal
+      const testGoal = {
+        description: `Test Goal ${Date.now()}`,
+        targetValue: 100,
+        unit: "pages",
+        deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
+        categoryId: 2,
+        reminderFrequency: "weekly"
+      };
+      
+      console.log(`Creating test goal: ${testGoal.description}`);
+      
+      // Create the goal
+      const createResponse = await fetch('/api/goals', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(testGoal)
+      });
+      
+      if (!createResponse.ok) {
+        const errorData = await createResponse.json();
+        console.error('Failed to create goal:', errorData);
+        return false;
+      }
+      
+      const createdGoal = await createResponse.json();
+      console.log('Created goal:', createdGoal);
+      
+      // Verify the goal was created with correct data
+      if (!createdGoal.id || createdGoal.description !== testGoal.description) {
+        console.error('Goal data mismatch:', { expected: testGoal, actual: createdGoal });
+        return false;
+      }
+      
+      // Fetch all goals to verify the goal appears in the list
+      const getResponse = await fetch('/api/goals');
+      if (!getResponse.ok) {
+        console.error('Failed to fetch goals');
+        return false;
+      }
+      
+      const goals = await getResponse.json();
+      
+      // Find our created goal in the list
+      const foundGoal = goals.find((g: any) => g.id === createdGoal.id);
+      if (!foundGoal) {
+        console.error('Created goal not found in the goals list');
+        return false;
+      }
+      
+      // Verify category is properly attached
+      if (!foundGoal.category || foundGoal.category.id !== testGoal.categoryId) {
+        console.error('Goal category mismatch:', { expected: testGoal.categoryId, actual: foundGoal.category?.id });
+        return false;
+      }
+      
+      console.log('Goal creation test passed successfully');
+      return true;
+    } catch (error) {
+      console.error('Error in goal creation test:', error);
+      return false;
+    }
   }
 });
 

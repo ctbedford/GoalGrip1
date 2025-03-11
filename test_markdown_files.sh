@@ -1,93 +1,32 @@
 #!/bin/bash
 
-# Define colors for output
-GREEN='\033[0;32m'
-RED='\033[0;31m'
-YELLOW='\033[0;33m'
-NC='\033[0m' # No Color
+# Test script to verify markdown file accessibility via the debug API
 
-# Define base URL - adjust as needed
-BASE_URL="http://localhost:5000"
+echo "Testing Markdown Files Access"
 
-# List of all markdown files to test
-MARKDOWN_FILES=(
-  "API_STANDARDS.md"
-  "API_TESTING.md"
-  "CONTRIBUTING.md"
-  "DEBUG_INFRASTRUCTURE.md"
-  "FEATURE_TESTING.md"
-  "IMPLEMENTATION_ANALYSIS.md"
-  "README.md"
-  "UNIFIED_DEBUG_IMPLEMENTATION.md"
-)
+# Get list of markdown files
+echo "Checking available markdown files..."
+MARKDOWN_LIST=$(curl -s http://localhost:5000/api/debug/markdown)
 
-# Print test header
-echo -e "${YELLOW}=== Testing Markdown File Access ===${NC}"
-echo -e "${YELLOW}Testing ${#MARKDOWN_FILES[@]} markdown files against ${BASE_URL}${NC}\n"
+# Display the list
+echo "Available markdown files:"
+echo $MARKDOWN_LIST | jq .
 
-# Counter for successful tests
-SUCCESS_COUNT=0
+# Test fetching our goal_creation.md file
+echo ""
+echo "Fetching goal_creation.md content..."
+GOAL_CREATION_MD=$(curl -s http://localhost:5000/api/debug/markdown/goal_creation.md)
 
-# Test each markdown file
-for file in "${MARKDOWN_FILES[@]}"; do
-  echo -e "Testing ${YELLOW}${file}${NC}..."
-  
-  # Make request and capture status code and response
-  HTTP_STATUS=$(curl -s -o /tmp/md_response -w "%{http_code}" ${BASE_URL}/${file})
-  RESPONSE_SIZE=$(stat -c%s /tmp/md_response)
-  
-  # Check status code
-  if [ "$HTTP_STATUS" -eq 200 ]; then
-    SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
-    echo -e "  Status: ${GREEN}${HTTP_STATUS}${NC}"
-    echo -e "  Size: ${GREEN}${RESPONSE_SIZE} bytes${NC}"
-    
-    # Show first few lines of content
-    echo -e "  Content snippet:"
-    head -n 3 /tmp/md_response | while read line; do
-      echo -e "    ${YELLOW}${line}${NC}"
-    done
-    
-    echo -e "  ${GREEN}✓ Success${NC}\n"
-  else
-    echo -e "  Status: ${RED}${HTTP_STATUS}${NC}"
-    echo -e "  ${RED}✗ Failed${NC}\n"
-    cat /tmp/md_response
-    echo -e "\n"
-  fi
-done
-
-# Print summary
-echo -e "${YELLOW}=== Test Summary ===${NC}"
-if [ "$SUCCESS_COUNT" -eq "${#MARKDOWN_FILES[@]}" ]; then
-  echo -e "${GREEN}All markdown files (${SUCCESS_COUNT}/${#MARKDOWN_FILES[@]}) are accessible!${NC}"
-else
-  echo -e "${RED}${SUCCESS_COUNT}/${#MARKDOWN_FILES[@]} markdown files are accessible.${NC}"
+# Check if we got content
+if [[ -z "$GOAL_CREATION_MD" || "$GOAL_CREATION_MD" == *"error"* ]]; then
+  echo "Failed to fetch goal_creation.md content. Response:"
+  echo $GOAL_CREATION_MD | jq .
+  exit 1
 fi
 
-# Add curl commands for debugging and documentation
-echo -e "\n${YELLOW}=== Curl Commands for API Documentation ===${NC}"
-echo -e "# Example curl commands to access markdown files:"
-echo -e "curl -X GET ${BASE_URL}/README.md"
-echo -e "curl -X GET ${BASE_URL}/API_STANDARDS.md"
-echo -e "curl -X GET ${BASE_URL}/UNIFIED_DEBUG_IMPLEMENTATION.md"
+echo "Successfully retrieved goal_creation.md content:"
+echo $GOAL_CREATION_MD | jq .
 
-# Add commands for the Debug API
-echo -e "\n${YELLOW}=== Debug API Integration ===${NC}"
-echo -e "# Get available debug functions:"
-echo -e "curl -X GET ${BASE_URL}/api/debug"
-
-echo -e "\n# List markdown files via Debug API:"
-echo -e "curl -X GET ${BASE_URL}/api/debug/markdown/list"
-
-echo -e "\n# Get content of a specific markdown file via Debug API:"
-echo -e "curl -X GET ${BASE_URL}/api/debug/markdown/content/README.md"
-
-echo -e "\n# Use the function name directly (redirects to specialized endpoint):"
-echo -e "curl -X GET ${BASE_URL}/api/debug/listMarkdownFiles"
-echo -e "curl -X GET ${BASE_URL}/api/debug/getMarkdownContent/API_STANDARDS.md"
-
-echo -e "\n# Create a debug query to list available markdown files:"
-echo -e "curl -X POST ${BASE_URL}/api/debug/query \\"
-echo -e "  -H \"Content-Type: application/json\" \\"
-echo -e "  -d '{\"query\": \"listMarkdownFiles()\"}'"
+echo ""
+echo "Markdown file tests completed successfully!"
+exit 0
