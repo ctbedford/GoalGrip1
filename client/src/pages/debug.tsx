@@ -24,6 +24,7 @@ import logger, { FeatureArea, LogLevel } from '@/lib/logger';
 import * as apiTester from '@/lib/apiTester';
 import * as debugStorage from '@/lib/debugStorage';
 import { registerDebugTests } from '@/lib/tests/debug-components';
+import '@/lib/tests/dashboard-components';
 import { MarkdownViewer } from '@/components/debug/markdown-viewer';
 import { FeatureStatusDashboard } from '@/components/debug/FeatureStatusDashboard';
 import { EnhancedLogViewer } from '@/components/debug/enhanced-log-viewer';
