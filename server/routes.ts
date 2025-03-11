@@ -18,7 +18,8 @@ import {
   internalError, 
   errorMiddleware 
 } from "./errorHandler";
-import debugApiRouter from "./routes/debug-api";
+// Import debug API router with correct syntax for ESM
+import simplifiedDebugApiRouter from "./routes/simplified-debug-api";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Middleware to check authentication
@@ -32,8 +33,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register global error handler middleware
   app.use(errorMiddleware);
   
-  // Register the Debug API router
-  app.use('/api/debug', debugApiRouter);
+  // Register the simplified Debug API router (new approach)
+  app.use('/api/debug', simplifiedDebugApiRouter);
 
   // ==== User Routes ====
   app.post('/api/users', async (req, res) => {

@@ -5,10 +5,42 @@
  * including logs, test results, and API test results for better debugging and QA.
  */
 
-import { FeatureTestResult, TestStatus } from './featureTester';
-import { ApiTestResult } from './apiTester';
-import { FeatureArea, LogLevel } from './logger';
+import { LogLevel, FeatureArea } from './logger';
+import { TestStatus } from './featureTester';
 
+// Type from apiTester to avoid circular import
+interface ApiTestResult {
+  endpoint: string;
+  method: string;
+  status: number;
+  success: boolean;
+  data: any;
+  error?: any;
+  duration: number;
+  timestamp: Date;
+}
+
+// Type from featureTester to avoid circular import
+interface FeatureTestResult {
+  id: string;
+  name: string;
+  description: string;
+  status: TestStatus;
+  error?: string;
+  duration?: number;
+  details?: any;
+  timestamp?: Date;
+  contextId?: string;
+}
+
+// Storage data structure
+interface DebugStorage {
+  logs: DebugLogEntry[];
+  featureTestResults: Record<string, FeatureTestResult>;
+  apiTestResults: ApiTestResult[];
+}
+
+// Debug log entry structure
 interface DebugLogEntry {
   level: LogLevel;
   area: FeatureArea;
@@ -17,40 +49,44 @@ interface DebugLogEntry {
   data?: any;
 }
 
-// In-memory storage (will be persisted to localStorage when in browser)
-let debugLogs: DebugLogEntry[] = [];
-let featureTestResults: Record<string, FeatureTestResult> = {};
-let apiTestResults: ApiTestResult[] = [];
+// Initialize empty storage
+let storage: DebugStorage = {
+  logs: [],
+  featureTestResults: {},
+  apiTestResults: []
+};
 
-// Maximum logs to keep in memory
-const MAX_LOGS = 1000;
+// Maximum number of log entries to keep
+const MAX_LOG_ENTRIES = 1000;
 
 /**
  * Initialize debug storage from localStorage if available
  */
 export function initDebugStorage(): void {
   try {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      const savedLogs = localStorage.getItem('debug_logs');
-      const savedFeatureTests = localStorage.getItem('feature_test_results');
-      const savedApiTests = localStorage.getItem('api_test_results');
-      
-      if (savedLogs) {
-        debugLogs = JSON.parse(savedLogs);
+    if (typeof localStorage !== 'undefined') {
+      const storedData = localStorage.getItem('debug_storage');
+      if (storedData) {
+        const parsed = JSON.parse(storedData);
+        
+        // Convert string timestamps back to Date objects
+        if (parsed.logs) {
+          parsed.logs.forEach((log: any) => {
+            log.timestamp = new Date(log.timestamp);
+          });
+        }
+        
+        if (parsed.apiTestResults) {
+          parsed.apiTestResults.forEach((result: any) => {
+            result.timestamp = new Date(result.timestamp);
+          });
+        }
+        
+        storage = parsed;
       }
-      
-      if (savedFeatureTests) {
-        featureTestResults = JSON.parse(savedFeatureTests);
-      }
-      
-      if (savedApiTests) {
-        apiTestResults = JSON.parse(savedApiTests);
-      }
-      
-      console.log(`[Debug Storage] Loaded ${debugLogs.length} logs, ${Object.keys(featureTestResults).length} feature tests, ${apiTestResults.length} API tests`);
     }
   } catch (error) {
-    console.error('[Debug Storage] Error initializing from localStorage', error);
+    console.warn('Failed to initialize debug storage:', error);
   }
 }
 
@@ -59,13 +95,11 @@ export function initDebugStorage(): void {
  */
 export function saveDebugStorage(): void {
   try {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      localStorage.setItem('debug_logs', JSON.stringify(debugLogs));
-      localStorage.setItem('feature_test_results', JSON.stringify(featureTestResults));
-      localStorage.setItem('api_test_results', JSON.stringify(apiTestResults));
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('debug_storage', JSON.stringify(storage));
     }
   } catch (error) {
-    console.error('[Debug Storage] Error saving to localStorage', error);
+    console.warn('Failed to save debug storage:', error);
   }
 }
 
@@ -81,14 +115,12 @@ export function addLogEntry(level: LogLevel, area: FeatureArea, message: string,
     data
   };
   
-  debugLogs.unshift(entry); // Add to beginning for most recent first
+  storage.logs.unshift(entry);
   
-  // Limit size
-  if (debugLogs.length > MAX_LOGS) {
-    debugLogs = debugLogs.slice(0, MAX_LOGS);
+  // Trim logs if they exceed the maximum size
+  if (storage.logs.length > MAX_LOG_ENTRIES) {
+    storage.logs = storage.logs.slice(0, MAX_LOG_ENTRIES);
   }
-  
-  saveDebugStorage();
 }
 
 /**
@@ -100,34 +132,36 @@ export function getLogEntries(filters?: {
   fromDate?: Date,
   toDate?: Date
 }): DebugLogEntry[] {
-  let filteredLogs = [...debugLogs];
-  
-  if (filters) {
-    if (typeof filters.level === 'number') {
-      filteredLogs = filteredLogs.filter(log => log.level >= filters.level!);
-    }
-    
-    if (filters.area) {
-      filteredLogs = filteredLogs.filter(log => log.area === filters.area);
-    }
-    
-    if (filters.fromDate) {
-      filteredLogs = filteredLogs.filter(log => log.timestamp >= filters.fromDate!);
-    }
-    
-    if (filters.toDate) {
-      filteredLogs = filteredLogs.filter(log => log.timestamp <= filters.toDate!);
-    }
+  if (!filters) {
+    return storage.logs;
   }
   
-  return filteredLogs;
+  return storage.logs.filter(log => {
+    if (filters.level !== undefined && log.level < filters.level) {
+      return false;
+    }
+    
+    if (filters.area !== undefined && log.area !== filters.area) {
+      return false;
+    }
+    
+    if (filters.fromDate && log.timestamp < filters.fromDate) {
+      return false;
+    }
+    
+    if (filters.toDate && log.timestamp > filters.toDate) {
+      return false;
+    }
+    
+    return true;
+  });
 }
 
 /**
  * Clear all log entries
  */
 export function clearLogs(): void {
-  debugLogs = [];
+  storage.logs = [];
   saveDebugStorage();
 }
 
@@ -135,13 +169,17 @@ export function clearLogs(): void {
  * Update feature test results
  */
 export function updateFeatureTestResult(testId: string, result: FeatureTestResult | Record<string, FeatureTestResult>): void {
-  if (testId === 'all' && typeof result !== 'string' && !('id' in result)) {
-    // Handle the case where result is a Record<string, FeatureTestResult>
-    featureTestResults = { ...featureTestResults, ...result };
+  if ('id' in result) {
+    // Single test result
+    storage.featureTestResults[testId] = result;
   } else {
-    // Handle the case where result is a single FeatureTestResult
-    featureTestResults[testId] = result as FeatureTestResult;
+    // Multiple test results
+    storage.featureTestResults = {
+      ...storage.featureTestResults,
+      ...result
+    };
   }
+  
   saveDebugStorage();
 }
 
@@ -149,14 +187,14 @@ export function updateFeatureTestResult(testId: string, result: FeatureTestResul
  * Get all feature test results
  */
 export function getFeatureTestResults(): Record<string, FeatureTestResult> {
-  return { ...featureTestResults };
+  return storage.featureTestResults;
 }
 
 /**
  * Clear feature test results
  */
 export function clearFeatureTestResults(): void {
-  featureTestResults = {};
+  storage.featureTestResults = {};
   saveDebugStorage();
 }
 
@@ -164,11 +202,11 @@ export function clearFeatureTestResults(): void {
  * Add API test result
  */
 export function addApiTestResult(result: ApiTestResult): void {
-  apiTestResults.unshift(result);
+  storage.apiTestResults.unshift(result);
   
-  // Limit size
-  if (apiTestResults.length > MAX_LOGS) {
-    apiTestResults = apiTestResults.slice(0, MAX_LOGS);
+  // Limit the number of stored results
+  if (storage.apiTestResults.length > 100) {
+    storage.apiTestResults = storage.apiTestResults.slice(0, 100);
   }
   
   saveDebugStorage();
@@ -178,14 +216,14 @@ export function addApiTestResult(result: ApiTestResult): void {
  * Get API test results
  */
 export function getApiTestResults(): ApiTestResult[] {
-  return [...apiTestResults];
+  return storage.apiTestResults;
 }
 
 /**
  * Clear API test results
  */
 export function clearApiTestResults(): void {
-  apiTestResults = [];
+  storage.apiTestResults = [];
   saveDebugStorage();
 }
 
@@ -193,14 +231,7 @@ export function clearApiTestResults(): void {
  * Export all debug data as JSON
  */
 export function exportDebugData(): string {
-  const data = {
-    logs: debugLogs,
-    featureTests: featureTestResults,
-    apiTests: apiTestResults,
-    exportTime: new Date()
-  };
-  
-  return JSON.stringify(data, null, 2);
+  return JSON.stringify(storage, null, 2);
 }
 
 /**
@@ -208,35 +239,29 @@ export function exportDebugData(): string {
  */
 export function importDebugData(jsonString: string): boolean {
   try {
-    const data = JSON.parse(jsonString);
+    const parsed = JSON.parse(jsonString);
     
-    if (data.logs) debugLogs = data.logs;
-    if (data.featureTests) featureTestResults = data.featureTests;
-    if (data.apiTests) apiTestResults = data.apiTests;
+    // Validate the structure minimally
+    if (!parsed.logs || !Array.isArray(parsed.logs)) {
+      return false;
+    }
     
+    // Convert string timestamps back to Date objects
+    parsed.logs.forEach((log: any) => {
+      log.timestamp = new Date(log.timestamp);
+    });
+    
+    if (parsed.apiTestResults) {
+      parsed.apiTestResults.forEach((result: any) => {
+        result.timestamp = new Date(result.timestamp);
+      });
+    }
+    
+    storage = parsed;
     saveDebugStorage();
     return true;
   } catch (error) {
-    console.error('[Debug Storage] Error importing data', error);
+    console.error('Failed to import debug data:', error);
     return false;
   }
 }
-
-// Initialize on module load
-if (typeof window !== 'undefined') {
-  initDebugStorage();
-}
-
-export default {
-  addLogEntry,
-  getLogEntries,
-  clearLogs,
-  updateFeatureTestResult,
-  getFeatureTestResults,
-  clearFeatureTestResults,
-  addApiTestResult,
-  getApiTestResults,
-  clearApiTestResults,
-  exportDebugData,
-  importDebugData
-};

@@ -5,11 +5,19 @@
  * request/response logging for APIs, and structured logging for feature tests.
  */
 
-import { v4 as uuidv4 } from 'uuid';
-import { FeatureArea, LogLevel, debug, info, warn, error } from './logger';
-import * as debugStorage from './debugStorage';
+import logger, { LogLevel, FeatureArea } from './logger';
 
-// Execution context interface
+// Store active execution contexts
+const activeContexts: Record<string, ExecutionContext> = {};
+
+// Store logs with context associations
+const contextLogs: Record<string, any[]> = {};
+
+// Generate a unique ID
+function generateId(): string {
+  return `ctx_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+}
+
 export interface ExecutionContext {
   id: string;
   feature?: string;
@@ -20,15 +28,12 @@ export interface ExecutionContext {
   data?: Record<string, any>;
 }
 
-// Store active execution contexts
-const activeContexts: Map<string, ExecutionContext> = new Map();
-
 /**
  * Create a new execution context for tracing a test or operation
  */
 export function createContext(feature?: string, testId?: string): ExecutionContext {
   const context: ExecutionContext = {
-    id: uuidv4(),
+    id: generateId(),
     feature,
     testId,
     startTime: performance.now(),
@@ -36,7 +41,16 @@ export function createContext(feature?: string, testId?: string): ExecutionConte
     data: {}
   };
   
-  activeContexts.set(context.id, context);
+  activeContexts[context.id] = context;
+  contextLogs[context.id] = [];
+  
+  // Log context creation
+  logger.debug(FeatureArea.PERFORMANCE, `Created execution context: ${context.id}`, {
+    feature,
+    testId,
+    timestamp: new Date()
+  });
+  
   return context;
 }
 
@@ -44,12 +58,16 @@ export function createContext(feature?: string, testId?: string): ExecutionConte
  * Complete an execution context
  */
 export function completeContext(
-  contextId: string, 
-  success: boolean = true, 
+  contextId: string,
+  success: boolean,
   data?: Record<string, any>
 ): ExecutionContext | null {
-  const context = activeContexts.get(contextId);
-  if (!context) return null;
+  const context = activeContexts[contextId];
+  
+  if (!context) {
+    logger.warn(FeatureArea.PERFORMANCE, `Attempted to complete unknown context: ${contextId}`);
+    return null;
+  }
   
   context.endTime = performance.now();
   context.status = success ? 'success' : 'failure';
@@ -58,19 +76,19 @@ export function completeContext(
     context.data = { ...context.data, ...data };
   }
   
-  // Store in debug storage for later retrieval
-  debugStorage.addLogEntry(
-    success ? LogLevel.INFO : LogLevel.ERROR,
-    FeatureArea.STORAGE,
-    `Execution context completed: ${context.feature || ''} ${context.testId || ''}`,
+  // Log context completion
+  logger.info(
+    FeatureArea.PERFORMANCE,
+    `Completed execution context: ${contextId}`,
     {
-      context,
-      duration: context.endTime - context.startTime,
-      status: context.status
+      feature: context.feature,
+      testId: context.testId,
+      duration: `${(context.endTime - context.startTime).toFixed(2)}ms`,
+      status: context.status,
+      data: context.data
     }
   );
   
-  activeContexts.delete(contextId);
   return context;
 }
 
@@ -79,40 +97,43 @@ export function completeContext(
  */
 export function logStep(
   contextId: string,
-  step: string,
+  message: string,
   level: LogLevel = LogLevel.INFO,
   area: FeatureArea = FeatureArea.PERFORMANCE,
   data?: any
 ): void {
-  const context = activeContexts.get(contextId);
+  // Check if context exists
+  const context = activeContexts[contextId];
+  
   if (!context) {
-    warn(FeatureArea.STORAGE, `Trying to log to non-existent context: ${contextId}`);
+    // Still log the message, but warn about missing context
+    logger.warn(area, `Logging to unknown context: ${contextId}. ${message}`, data);
     return;
   }
   
-  // Log with the context ID for correlation
-  const logData = {
+  // Create log entry
+  const entry = {
     contextId,
-    feature: context.feature,
-    testId: context.testId,
-    step,
-    ...data
+    message,
+    level,
+    area,
+    timestamp: new Date(),
+    data
   };
   
-  switch (level) {
-    case LogLevel.DEBUG:
-      debug(area, `[${contextId.slice(0, 8)}] ${step}`, logData);
-      break;
-    case LogLevel.INFO:
-      info(area, `[${contextId.slice(0, 8)}] ${step}`, logData);
-      break;
-    case LogLevel.WARN:
-      warn(area, `[${contextId.slice(0, 8)}] ${step}`, logData);
-      break;
-    case LogLevel.ERROR:
-      error(area, `[${contextId.slice(0, 8)}] ${step}`, logData);
-      break;
+  // Store in context logs
+  if (contextLogs[contextId]) {
+    contextLogs[contextId].push(entry);
+  } else {
+    contextLogs[contextId] = [entry];
   }
+  
+  // Also log through main logger
+  logger[LogLevel[level].toLowerCase() as 'debug' | 'info' | 'warn' | 'error'](
+    area,
+    `[Context: ${contextId}] ${message}`,
+    data
+  );
 }
 
 /**
@@ -122,17 +143,19 @@ export function logApiRequest(
   contextId: string,
   method: string,
   url: string,
-  data?: any
+  body?: any,
+  headers?: Record<string, string>
 ): void {
   logStep(
     contextId,
     `API Request: ${method} ${url}`,
-    LogLevel.INFO,
+    LogLevel.DEBUG,
     FeatureArea.API,
     {
       method,
       url,
-      requestData: data
+      body: body ? JSON.stringify(body).substring(0, 1000) : undefined,
+      headers: headers ? JSON.stringify(headers) : undefined
     }
   );
 }
@@ -143,20 +166,22 @@ export function logApiRequest(
 export function logApiResponse(
   contextId: string,
   status: number,
-  data: any,
-  duration: number
+  url: string,
+  data?: any,
+  duration?: number
 ): void {
-  const level = status >= 200 && status < 300 ? LogLevel.INFO : LogLevel.ERROR;
+  const isError = status >= 400;
   
   logStep(
     contextId,
-    `API Response: ${status}`,
-    level,
+    `API Response: ${status} for ${url}`,
+    isError ? LogLevel.ERROR : LogLevel.DEBUG,
     FeatureArea.API,
     {
       status,
-      responseData: data,
-      durationMs: duration
+      url,
+      data: data ? JSON.stringify(data).substring(0, 1000) : undefined,
+      duration
     }
   );
 }
@@ -166,14 +191,16 @@ export function logApiResponse(
  */
 export function logTestInput(
   contextId: string,
-  inputData: any
+  input: any
 ): void {
   logStep(
     contextId,
-    'Test Input',
-    LogLevel.INFO,
-    FeatureArea.UI,
-    { input: inputData }
+    `Test input data`,
+    LogLevel.DEBUG,
+    FeatureArea.PERFORMANCE,
+    {
+      input
+    }
   );
 }
 
@@ -184,20 +211,34 @@ export function logTestOutput(
   contextId: string,
   expected: any,
   actual: any,
-  success: boolean
+  isEqual: boolean
 ): void {
-  logStep(
-    contextId,
-    'Test Output',
-    success ? LogLevel.INFO : LogLevel.ERROR,
-    FeatureArea.UI,
-    {
-      expected,
-      actual,
-      success,
-      difference: success ? null : findDifferences(expected, actual)
-    }
-  );
+  if (isEqual) {
+    logStep(
+      contextId,
+      `Test output matches expected result`,
+      LogLevel.INFO,
+      FeatureArea.PERFORMANCE,
+      {
+        expected,
+        actual
+      }
+    );
+  } else {
+    const differences = findDifferences(expected, actual);
+    
+    logStep(
+      contextId,
+      `Test output does not match expected result`,
+      LogLevel.WARN,
+      FeatureArea.PERFORMANCE,
+      {
+        expected,
+        actual,
+        differences
+      }
+    );
+  }
 }
 
 /**
@@ -206,56 +247,64 @@ export function logTestOutput(
 function findDifferences(expected: any, actual: any): Record<string, any> {
   const differences: Record<string, any> = {};
   
+  // Simple implementation for primitive comparisons
   if (typeof expected !== typeof actual) {
-    return { typeMismatch: { expected: typeof expected, actual: typeof actual } };
+    return { 
+      typeExpected: typeof expected,
+      typeActual: typeof actual
+    };
   }
   
-  if (Array.isArray(expected) && Array.isArray(actual)) {
+  if (typeof expected !== 'object' || expected === null || actual === null) {
+    if (expected !== actual) {
+      return {
+        expected,
+        actual 
+      };
+    }
+    return {};
+  }
+  
+  // Compare objects
+  if (Array.isArray(expected)) {
+    if (!Array.isArray(actual)) {
+      return { 
+        typeExpected: 'array',
+        typeActual: typeof actual 
+      };
+    }
+    
     if (expected.length !== actual.length) {
-      differences.lengthMismatch = { expected: expected.length, actual: actual.length };
+      return {
+        lengthExpected: expected.length,
+        lengthActual: actual.length
+      };
     }
     
-    // Find differences in array items
-    const minLength = Math.min(expected.length, actual.length);
-    for (let i = 0; i < minLength; i++) {
-      const itemDiff = findDifferences(expected[i], actual[i]);
-      if (Object.keys(itemDiff).length > 0) {
-        differences[`item${i}`] = itemDiff;
-      }
-    }
-    
-    return differences;
+    // Full deep comparison would be more complex
+    // This is a simplified version
+    return {};
   }
   
-  if (expected !== null && actual !== null && typeof expected === 'object' && typeof actual === 'object') {
-    // Compare objects
-    const allKeys = new Set([...Object.keys(expected), ...Object.keys(actual)]);
-    
-    for (const key of allKeys) {
-      if (!(key in expected)) {
-        differences[key] = { type: 'missing_in_expected', value: actual[key] };
-      } else if (!(key in actual)) {
-        differences[key] = { type: 'missing_in_actual', value: expected[key] };
-      } else if (expected[key] !== actual[key]) {
-        if (typeof expected[key] === 'object' && typeof actual[key] === 'object' && 
-            expected[key] !== null && actual[key] !== null) {
-          const nestedDiff = findDifferences(expected[key], actual[key]);
-          if (Object.keys(nestedDiff).length > 0) {
-            differences[key] = nestedDiff;
-          }
-        } else {
-          differences[key] = { expected: expected[key], actual: actual[key] };
-        }
+  // Compare object properties
+  Object.keys(expected).forEach(key => {
+    if (!(key in actual)) {
+      differences[key] = { 
+        expected: expected[key],
+        actual: 'missing'
+      };
+    } else if (typeof expected[key] === 'object' && expected[key] !== null) {
+      const nestedDiffs = findDifferences(expected[key], actual[key]);
+      if (Object.keys(nestedDiffs).length > 0) {
+        differences[key] = nestedDiffs;
       }
+    } else if (expected[key] !== actual[key]) {
+      differences[key] = {
+        expected: expected[key],
+        actual: actual[key]
+      };
     }
-    
-    return differences;
-  }
-  
-  // Simple value comparison
-  if (expected !== actual) {
-    return { valueMismatch: { expected, actual } };
-  }
+  });
   
   return differences;
 }
@@ -264,28 +313,14 @@ function findDifferences(expected: any, actual: any): Record<string, any> {
  * Get all contexts for a specific feature or test
  */
 export function getContextsByFeature(feature: string): ExecutionContext[] {
-  // Retrieve from debug storage
-  const logs = debugStorage.getLogEntries({
-    area: FeatureArea.STORAGE
-  });
-  
-  // Extract contexts from log data
-  const contexts: ExecutionContext[] = [];
-  logs.forEach(log => {
-    if (log.data?.context?.feature === feature) {
-      contexts.push(log.data.context);
-    }
-  });
-  
-  return contexts;
+  return Object.values(activeContexts).filter(ctx => ctx.feature === feature);
 }
 
 /**
  * Get all logs for a specific execution context
  */
 export function getLogsByContext(contextId: string): any[] {
-  const logs = debugStorage.getLogEntries();
-  return logs.filter(log => log.data?.contextId === contextId);
+  return contextLogs[contextId] || [];
 }
 
 /**
@@ -294,41 +329,37 @@ export function getLogsByContext(contextId: string): any[] {
  */
 export function createTestExecutor(feature: string, testId: string) {
   return async function executeTest<T>(
-    testFn: (contextId: string) => Promise<T>
-  ): Promise<{ result: T | null, success: boolean, contextId: string }> {
-    // Create execution context
+    testFn: () => Promise<T> | T
+  ): Promise<T> {
     const context = createContext(feature, testId);
     const contextId = context.id;
     
-    // Log test start
-    logStep(contextId, `Starting test: ${feature} - ${testId}`, LogLevel.INFO);
-    
     try {
-      // Execute test function with context
-      const result = await testFn(contextId);
+      logStep(contextId, `Starting test execution: ${testId}`, LogLevel.INFO, FeatureArea.PERFORMANCE);
       
-      // Log success and complete context
-      logStep(contextId, `Test completed successfully: ${feature} - ${testId}`, LogLevel.INFO);
+      const result = await Promise.resolve(testFn());
+      
+      logStep(contextId, `Completed test execution: ${testId}`, LogLevel.INFO, FeatureArea.PERFORMANCE);
       completeContext(contextId, true, { result });
       
-      return { result, success: true, contextId };
+      return result;
     } catch (error) {
-      // Log error and complete context with failure
       logStep(
-        contextId, 
-        `Test failed: ${feature} - ${testId}`,
+        contextId,
+        `Test execution failed: ${testId}`,
         LogLevel.ERROR,
-        FeatureArea.UI,
-        { error }
+        FeatureArea.PERFORMANCE,
+        { error: error instanceof Error ? error.message : String(error) }
       );
       
-      completeContext(contextId, false, { error });
-      return { result: null, success: false, contextId };
+      completeContext(contextId, false, { error: error instanceof Error ? error.message : String(error) });
+      throw error;
     }
   };
 }
 
-export default {
+// Create a singleton object to encapsulate the enhanced logger functionality
+const enhancedLogger = {
   createContext,
   completeContext,
   logStep,
@@ -340,3 +371,5 @@ export default {
   getLogsByContext,
   createTestExecutor
 };
+
+export default enhancedLogger;

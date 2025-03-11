@@ -15,21 +15,21 @@
  */
 
 import { registerFeatureTest } from '../featureTester';
-import { FeatureArea, LogLevel, registerFeature, markFeatureImplemented } from '../logger';
+import logger, { FeatureArea, LogLevel } from '../logger';
 import enhancedLogger from '../enhancedLogger';
 import * as apiTester from '../apiTester';
 import * as debugStorage from '../debugStorage';
 
 // Mark all debug components as implemented
 const markDebugComponentsImplemented = () => {
-  markFeatureImplemented('log-viewer', 'Enhanced log viewer implementation complete');
-  markFeatureImplemented('debug-infrastructure', 'Debug infrastructure implementation complete');
-  markFeatureImplemented('enhanced-logger', 'Enhanced logger implementation complete');
-  markFeatureImplemented('api-tester', 'API tester implementation complete');
-  markFeatureImplemented('feature-tester', 'Feature tester implementation complete');
-  markFeatureImplemented('api-dashboard', 'API dashboard implementation complete');
-  markFeatureImplemented('feature-dashboard', 'Feature dashboard implementation complete');
-  markFeatureImplemented('performance-metrics', 'Performance metrics implementation complete');
+  logger.markFeatureImplemented('log-viewer', 'Enhanced log viewer implementation complete');
+  logger.markFeatureImplemented('debug-infrastructure', 'Debug infrastructure implementation complete');
+  logger.markFeatureImplemented('enhanced-logger', 'Enhanced logger implementation complete');
+  logger.markFeatureImplemented('api-tester', 'API tester implementation complete');
+  logger.markFeatureImplemented('feature-tester', 'Feature tester implementation complete');
+  logger.markFeatureImplemented('api-dashboard', 'API dashboard implementation complete');
+  logger.markFeatureImplemented('feature-dashboard', 'Feature dashboard implementation complete');
+  logger.markFeatureImplemented('performance-metrics', 'Performance metrics implementation complete');
 };
 
 // Mark debug components as implemented
@@ -334,7 +334,8 @@ registerFeatureTest({
   dependencies: ['feature-tester'],
   test: async (contextId) => {
     try {
-      const { markFeatureImplemented, markFeatureTested } = await import('../logger');
+      const loggerModule = await import('../logger');
+      const loggerInstance = loggerModule.default;
       
       // Register and mark some test features
       const testFeatureId = 'test-feature-status-' + Date.now();
@@ -347,12 +348,11 @@ registerFeatureTest({
       );
       
       // Mark features as implemented and tested
-      markFeatureImplemented(testFeatureId, "Test feature implemented");
-      markFeatureTested(testFeatureId, true, "Test feature tested");
+      loggerInstance.markFeatureImplemented(testFeatureId, "Test feature implemented");
+      loggerInstance.markFeatureTested(testFeatureId, true, "Test feature tested");
       
       // Verify feature was marked
-      const { getFeatureVerificationStatus } = await import('../logger');
-      const status = getFeatureVerificationStatus();
+      const status = loggerInstance.getFeatureVerificationStatus();
       
       const featureFound = Object.keys(status).some(id => id === testFeatureId);
       
@@ -388,7 +388,8 @@ registerFeatureTest({
   area: FeatureArea.PERFORMANCE,
   test: async (contextId) => {
     try {
-      const { startPerformanceMeasurement, endPerformanceMeasurement } = await import('../logger');
+      const loggerModule = await import('../logger');
+      const loggerInstance = loggerModule.default;
       
       // Create some test performance metrics
       enhancedLogger.logStep(
@@ -399,13 +400,13 @@ registerFeatureTest({
       );
       
       // Measure some operations
-      const metric1Id = startPerformanceMeasurement('test-operation-1', FeatureArea.PERFORMANCE);
+      const metric1Id = loggerInstance.startPerformanceMeasurement('test-operation-1', FeatureArea.PERFORMANCE);
       await new Promise(resolve => setTimeout(resolve, 50));
-      const metric1 = endPerformanceMeasurement(metric1Id);
+      const metric1 = loggerInstance.endPerformanceMeasurement(metric1Id);
       
-      const metric2Id = startPerformanceMeasurement('test-operation-2', FeatureArea.PERFORMANCE);
+      const metric2Id = loggerInstance.startPerformanceMeasurement('test-operation-2', FeatureArea.PERFORMANCE);
       await new Promise(resolve => setTimeout(resolve, 100));
-      const metric2 = endPerformanceMeasurement(metric2Id);
+      const metric2 = loggerInstance.endPerformanceMeasurement(metric2Id);
       
       // Verify metrics were created
       const success = metric1 !== null && metric2 !== null && 

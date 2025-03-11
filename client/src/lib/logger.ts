@@ -9,8 +9,6 @@
  * for better debugging and QA across sessions.
  */
 
-import * as debugStorage from './debugStorage';
-
 // Log levels
 export enum LogLevel {
   DEBUG = 0,
@@ -35,6 +33,15 @@ export enum FeatureArea {
   PERFORMANCE = 'performance',
 }
 
+// Minimal implementation of debug storage
+const debugStorage = {
+  addLogEntry: (level: LogLevel, area: FeatureArea, message: string, data?: any) => {},
+  saveDebugStorage: () => {},
+  initDebugStorage: () => {
+    console.log('Debug storage initialized (stub)');
+  }
+};
+
 // Logger configuration
 interface LoggerConfig {
   minLevel: LogLevel;
@@ -44,13 +51,17 @@ interface LoggerConfig {
   enablePerformanceMetrics: boolean;
 }
 
+// Check if we're in development mode
+// Default to true to enable easier debugging
+const isDev = true;
+
 // Default configuration
 const defaultConfig: LoggerConfig = {
-  minLevel: import.meta.env.DEV ? LogLevel.DEBUG : LogLevel.INFO,
+  minLevel: isDev ? LogLevel.DEBUG : LogLevel.INFO,
   enabledAreas: 'all',
-  enableConsole: import.meta.env.DEV,
+  enableConsole: isDev,
   enableFeatureVerification: true,
-  enablePerformanceMetrics: import.meta.env.DEV,
+  enablePerformanceMetrics: isDev,
 };
 
 // Current configuration (initialized with default)
@@ -83,20 +94,6 @@ interface PerformanceMetric {
 
 // Store active performance measurements
 const activePerformanceMetrics: Map<string, PerformanceMetric> = new Map();
-
-/**
- * Configure the logger
- */
-export function configureLogger(newConfig: Partial<LoggerConfig>): void {
-  config = { ...config, ...newConfig };
-}
-
-/**
- * Reset logger to default configuration
- */
-export function resetLogger(): void {
-  config = { ...defaultConfig };
-}
 
 /**
  * Internal logging function
@@ -140,244 +137,242 @@ function logInternal(
     }
   }
   
-  // Persist log to debug storage
+  // Persist log to debug storage (this is a stub implementation)
   debugStorage.addLogEntry(level, area, message, data);
-  
-  // Save debug storage periodically (every 10 logs or on error/warning)
-  if (level >= LogLevel.WARN || Math.random() < 0.1) {
-    debugStorage.saveDebugStorage();
+}
+
+// Logger class
+class Logger {
+  /**
+   * Configure the logger
+   */
+  configureLogger(newConfig: Partial<LoggerConfig>): void {
+    config = { ...config, ...newConfig };
   }
-}
 
-/**
- * Debug level logging
- */
-export function debug(area: FeatureArea, message: string, data?: any): void {
-  logInternal(LogLevel.DEBUG, area, message, data);
-}
+  /**
+   * Reset logger to default configuration
+   */
+  resetLogger(): void {
+    config = { ...defaultConfig };
+  }
 
-/**
- * Info level logging
- */
-export function info(area: FeatureArea, message: string, data?: any): void {
-  logInternal(LogLevel.INFO, area, message, data);
-}
+  /**
+   * Debug level logging
+   */
+  debug(area: FeatureArea, message: string, data?: any): void {
+    logInternal(LogLevel.DEBUG, area, message, data);
+  }
 
-/**
- * Warning level logging
- */
-export function warn(area: FeatureArea, message: string, data?: any): void {
-  logInternal(LogLevel.WARN, area, message, data);
-}
+  /**
+   * Info level logging
+   */
+  info(area: FeatureArea, message: string, data?: any): void {
+    logInternal(LogLevel.INFO, area, message, data);
+  }
 
-/**
- * Error level logging
- */
-export function error(area: FeatureArea, message: string, data?: any): void {
-  logInternal(LogLevel.ERROR, area, message, data);
-}
+  /**
+   * Warning level logging
+   */
+  warn(area: FeatureArea, message: string, data?: any): void {
+    logInternal(LogLevel.WARN, area, message, data);
+  }
 
-/**
- * Register a feature for verification
- */
-export function registerFeature(
-  featureName: string,
-  implementedOrArea: boolean | FeatureArea = false,
-  tested: boolean = false,
-  notes: string = ''
-): void {
-  // Handle the case where the second parameter is a FeatureArea
-  const implemented = typeof implementedOrArea === 'boolean' ? implementedOrArea : false;
-  const area = typeof implementedOrArea !== 'boolean' ? implementedOrArea : undefined;
-  if (!config.enableFeatureVerification) return;
-  
-  if (!featureVerification[featureName]) {
-    featureVerification[featureName] = {
-      implemented,
-      tested,
-      lastVerified: null,
-      notes: notes ? [notes] : [],
-    };
-  } else {
-    if (implemented) {
-      featureVerification[featureName].implemented = true;
+  /**
+   * Error level logging
+   */
+  error(area: FeatureArea, message: string, data?: any): void {
+    logInternal(LogLevel.ERROR, area, message, data);
+  }
+
+  /**
+   * Register a feature for verification
+   */
+  registerFeature(
+    featureName: string,
+    implementedOrArea: boolean | FeatureArea = false,
+    tested: boolean = false,
+    notes: string = ''
+  ): void {
+    // Handle the case where the second parameter is a FeatureArea
+    const implemented = typeof implementedOrArea === 'boolean' ? implementedOrArea : false;
+    const area = typeof implementedOrArea !== 'boolean' ? implementedOrArea : undefined;
+    if (!config.enableFeatureVerification) return;
+    
+    if (!featureVerification[featureName]) {
+      featureVerification[featureName] = {
+        implemented,
+        tested,
+        lastVerified: null,
+        notes: notes ? [notes] : [],
+      };
+    } else {
+      if (implemented) {
+        featureVerification[featureName].implemented = true;
+      }
+      if (tested) {
+        featureVerification[featureName].tested = true;
+      }
+      if (notes) {
+        featureVerification[featureName].notes.push(notes);
+      }
     }
-    if (tested) {
-      featureVerification[featureName].tested = true;
+    
+    this.info(FeatureArea.UI, `Feature registered: ${featureName}`, { implemented, tested });
+  }
+
+  /**
+   * Mark a feature as implemented
+   */
+  markFeatureImplemented(
+    featureName: string,
+    notes: string = ''
+  ): void {
+    if (!config.enableFeatureVerification) return;
+    
+    if (!featureVerification[featureName]) {
+      this.registerFeature(featureName, true, false, notes);
+      return;
     }
+    
+    featureVerification[featureName].implemented = true;
+    featureVerification[featureName].lastVerified = new Date();
+    
     if (notes) {
       featureVerification[featureName].notes.push(notes);
     }
+    
+    this.info(FeatureArea.UI, `Feature implemented: ${featureName}`, { timestamp: new Date() });
   }
-  
-  info(FeatureArea.UI, `Feature registered: ${featureName}`, { implemented, tested });
+
+  /**
+   * Mark a feature as tested
+   */
+  markFeatureTested(
+    featureName: string,
+    passed: boolean = true,
+    notes: string = ''
+  ): void {
+    if (!config.enableFeatureVerification) return;
+    
+    if (!featureVerification[featureName]) {
+      this.registerFeature(featureName, false, passed, notes);
+      return;
+    }
+    
+    featureVerification[featureName].tested = passed;
+    featureVerification[featureName].lastVerified = new Date();
+    
+    if (notes) {
+      featureVerification[featureName].notes.push(`Test ${passed ? 'PASSED' : 'FAILED'}: ${notes}`);
+    }
+    
+    if (passed) {
+      this.info(FeatureArea.UI, `Feature test passed: ${featureName}`, { timestamp: new Date() });
+    } else {
+      this.warn(FeatureArea.UI, `Feature test failed: ${featureName}`, { timestamp: new Date(), notes });
+    }
+  }
+
+  /**
+   * Get feature verification status
+   */
+  getFeatureVerificationStatus(): FeatureVerification {
+    return { ...featureVerification };
+  }
+
+  /**
+   * Start measuring performance for an operation
+   */
+  startPerformanceMeasurement(
+    operation: string,
+    area: FeatureArea
+  ): string {
+    if (!config.enablePerformanceMetrics) return '';
+    
+    const id = `${area}-${operation}-${Date.now()}`;
+    const metric: PerformanceMetric = {
+      operation,
+      area,
+      startTime: performance.now(),
+    };
+    
+    activePerformanceMetrics.set(id, metric);
+    this.debug(FeatureArea.PERFORMANCE, `Started measuring: ${operation}`, { id, area });
+    
+    return id;
+  }
+
+  /**
+   * End measuring performance for an operation
+   */
+  endPerformanceMeasurement(id: string): PerformanceMetric | null {
+    if (!config.enablePerformanceMetrics || !id) return null;
+    
+    const metric = activePerformanceMetrics.get(id);
+    if (!metric) {
+      this.warn(FeatureArea.PERFORMANCE, `No active measurement found for id: ${id}`);
+      return null;
+    }
+    
+    metric.endTime = performance.now();
+    metric.duration = metric.endTime - metric.startTime;
+    
+    activePerformanceMetrics.delete(id);
+    
+    this.info(
+      FeatureArea.PERFORMANCE,
+      `Completed measuring: ${metric.operation}`,
+      { duration: `${metric.duration.toFixed(2)}ms`, area: metric.area }
+    );
+    
+    return metric;
+  }
+
+  /**
+   * Measure the performance of a function
+   */
+  async measurePerformance<T>(
+    operation: string,
+    area: FeatureArea,
+    fn: () => T | Promise<T>
+  ): Promise<T> {
+    if (!config.enablePerformanceMetrics) {
+      return fn();
+    }
+    
+    const id = this.startPerformanceMeasurement(operation, area);
+    
+    try {
+      const result = await Promise.resolve(fn());
+      this.endPerformanceMeasurement(id);
+      return result;
+    } catch (err) {
+      this.endPerformanceMeasurement(id);
+      throw err;
+    }
+  }
 }
 
-/**
- * Mark a feature as implemented
- */
-export function markFeatureImplemented(
-  featureName: string,
-  notes: string = ''
-): void {
-  if (!config.enableFeatureVerification) return;
-  
-  if (!featureVerification[featureName]) {
-    registerFeature(featureName, true, false, notes);
-    return;
-  }
-  
-  featureVerification[featureName].implemented = true;
-  featureVerification[featureName].lastVerified = new Date();
-  
-  if (notes) {
-    featureVerification[featureName].notes.push(notes);
-  }
-  
-  info(FeatureArea.UI, `Feature implemented: ${featureName}`, { timestamp: new Date() });
-}
-
-/**
- * Mark a feature as tested
- */
-export function markFeatureTested(
-  featureName: string,
-  passed: boolean = true,
-  notes: string = ''
-): void {
-  if (!config.enableFeatureVerification) return;
-  
-  if (!featureVerification[featureName]) {
-    registerFeature(featureName, false, passed, notes);
-    return;
-  }
-  
-  featureVerification[featureName].tested = passed;
-  featureVerification[featureName].lastVerified = new Date();
-  
-  if (notes) {
-    featureVerification[featureName].notes.push(`Test ${passed ? 'PASSED' : 'FAILED'}: ${notes}`);
-  }
-  
-  if (passed) {
-    info(FeatureArea.UI, `Feature test passed: ${featureName}`, { timestamp: new Date() });
-  } else {
-    warn(FeatureArea.UI, `Feature test failed: ${featureName}`, { timestamp: new Date(), notes });
-  }
-}
-
-/**
- * Get feature verification status
- */
-export function getFeatureVerificationStatus(): FeatureVerification {
-  return { ...featureVerification };
-}
-
-/**
- * Start measuring performance for an operation
- */
-export function startPerformanceMeasurement(
-  operation: string,
-  area: FeatureArea
-): string {
-  if (!config.enablePerformanceMetrics) return '';
-  
-  const id = `${area}-${operation}-${Date.now()}`;
-  const metric: PerformanceMetric = {
-    operation,
-    area,
-    startTime: performance.now(),
-  };
-  
-  activePerformanceMetrics.set(id, metric);
-  debug(FeatureArea.PERFORMANCE, `Started measuring: ${operation}`, { id, area });
-  
-  return id;
-}
-
-/**
- * End measuring performance for an operation
- */
-export function endPerformanceMeasurement(id: string): PerformanceMetric | null {
-  if (!config.enablePerformanceMetrics || !id) return null;
-  
-  const metric = activePerformanceMetrics.get(id);
-  if (!metric) {
-    warn(FeatureArea.PERFORMANCE, `No active measurement found for id: ${id}`);
-    return null;
-  }
-  
-  metric.endTime = performance.now();
-  metric.duration = metric.endTime - metric.startTime;
-  
-  activePerformanceMetrics.delete(id);
-  
-  info(
-    FeatureArea.PERFORMANCE,
-    `Completed measuring: ${metric.operation}`,
-    { duration: `${metric.duration.toFixed(2)}ms`, area: metric.area }
-  );
-  
-  return metric;
-}
-
-/**
- * Measure the performance of a function
- */
-export async function measurePerformance<T>(
-  operation: string,
-  area: FeatureArea,
-  fn: () => T | Promise<T>
-): Promise<T> {
-  if (!config.enablePerformanceMetrics) {
-    return fn();
-  }
-  
-  const id = startPerformanceMeasurement(operation, area);
-  
-  try {
-    const result = await Promise.resolve(fn());
-    endPerformanceMeasurement(id);
-    return result;
-  } catch (err) {
-    endPerformanceMeasurement(id);
-    throw err;
-  }
-}
+// Create a singleton instance
+const logger = new Logger();
 
 // Initialize common features for tracking
-registerFeature('dashboard-stats', true, false);
-registerFeature('goal-creation', true, false);
-registerFeature('goal-progress-tracking', true, false);
-registerFeature('analytics-charts', true, false);
-registerFeature('achievements-badges', true, false);
-registerFeature('settings-profile', true, false);
-registerFeature('settings-appearance', true, false);
-registerFeature('settings-notifications', true, false);
-registerFeature('settings-security', true, false);
+logger.registerFeature('dashboard-stats', true, false);
+logger.registerFeature('goal-creation', true, false);
+logger.registerFeature('goal-progress-tracking', true, false);
+logger.registerFeature('analytics-charts', true, false);
+logger.registerFeature('achievements-badges', true, false);
+logger.registerFeature('settings-profile', true, false);
+logger.registerFeature('settings-appearance', true, false);
+logger.registerFeature('settings-notifications', true, false);
+logger.registerFeature('settings-security', true, false);
 
-// Initialize debug storage system
+// Initialize logger
 if (!initialized) {
   debugStorage.initDebugStorage();
   initialized = true;
   logInternal(LogLevel.INFO, FeatureArea.UI, 'Logger initialized');
 }
 
-// Export a default logger instance
-export default {
-  debug,
-  info,
-  warn,
-  error,
-  registerFeature,
-  markFeatureImplemented,
-  markFeatureTested,
-  getFeatureVerificationStatus,
-  startPerformanceMeasurement,
-  endPerformanceMeasurement,
-  measurePerformance,
-  configureLogger,
-  resetLogger,
-  FeatureArea,
-  LogLevel,
-};
+export default logger;

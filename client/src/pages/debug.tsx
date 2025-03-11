@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { FeatureTester } from '@/lib/featureTester';
 import logger, { FeatureArea, LogLevel } from '@/lib/logger';
-import apiTester from '@/lib/apiTester';
+import * as apiTester from '@/lib/apiTester';
 import * as debugStorage from '@/lib/debugStorage';
 import { registerDebugTests } from '@/lib/tests/debug-components';
 import { MarkdownViewer } from '@/components/debug/markdown-viewer';

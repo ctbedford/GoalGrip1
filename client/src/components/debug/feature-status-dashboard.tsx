@@ -20,7 +20,7 @@ import {
   Calendar
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { FeatureArea, getFeatureVerificationStatus } from '@/lib/logger';
+import logger, { FeatureArea } from '@/lib/logger';
 import * as debugStorage from '@/lib/debugStorage';
 import { TestStatus } from '@/lib/featureTester';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -70,7 +70,7 @@ export function FeatureStatusDashboard() {
   // Load feature verification status
   const loadFeatureStatus = () => {
     setIsLoading(true);
-    const verificationStatus = getFeatureVerificationStatus();
+    const verificationStatus = logger.getFeatureVerificationStatus();
     
     // Convert to our component's data structure
     const featureStatusMap: Record<string, FeatureStatus> = {};

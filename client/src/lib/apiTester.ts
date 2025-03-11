@@ -546,13 +546,4 @@ export async function testCompleteUserJourney(): Promise<boolean> {
   }
 }
 
-export default {
-  testEndpoint,
-  testAllEndpoints,
-  testGoalLifecycle,
-  testCompleteUserJourney,
-  getTestResults,
-  clearTestResults,
-  generateTestReport,
-  ApiEndpoint,
-};
+// Remove default export - all functions are already exported individually

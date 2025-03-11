@@ -1,6 +1,5 @@
-import { getFeatureVerificationStatus } from './logger';
+import logger, { FeatureArea } from './logger';
 import { getTestResults, getRegisteredTests, TestStatus, FeatureTest, FeatureTestResult } from './featureTester';
-import { FeatureArea } from './logger';
 import { 
   EnhancedFeatureStatus,
   FeatureTestInfo,
@@ -27,7 +26,7 @@ export class FeatureTestService {
    */
   private initializeMapping(): void {
     const tests = getRegisteredTests();
-    const features = getFeatureVerificationStatus();
+    const features = logger.getFeatureVerificationStatus();
     
     // Reset mappings
     this.featureTestMap = {};
@@ -195,7 +194,7 @@ export class FeatureTestService {
    * Get enhanced feature status with test information
    */
   public getEnhancedFeatures(): EnhancedFeatureStatus[] {
-    const features = getFeatureVerificationStatus();
+    const features = logger.getFeatureVerificationStatus();
     return Object.entries(features).map(([name, feature]) => {
       const tests = this.getTestsForFeature(name);
       return enhanceFeatureStatus({ ...feature, name }, tests);
@@ -206,7 +205,7 @@ export class FeatureTestService {
    * Get enhanced feature by name
    */
   public getEnhancedFeature(featureName: string): EnhancedFeatureStatus | undefined {
-    const features = getFeatureVerificationStatus();
+    const features = logger.getFeatureVerificationStatus();
     const feature = features[featureName];
     
     if (!feature) {
@@ -237,23 +236,24 @@ export class FeatureTestService {
         if (testResult) {
           // Import logger dynamically to avoid circular dependencies
           import('./logger').then(loggerModule => {
+            const loggerInstance = loggerModule.default;
             if (testResult.status === TestStatus.PASSED) {
               // Mark the feature as tested successfully
-              loggerModule.markFeatureTested(
+              loggerInstance.markFeatureTested(
                 featureName, 
                 true, 
                 `Test passed: ${testResult.name}`
               );
             } else if (testResult.status === TestStatus.FAILED) {
               // Mark the feature as tested but failed
-              loggerModule.markFeatureTested(
+              loggerInstance.markFeatureTested(
                 featureName, 
                 false, 
                 `Test failed: ${testResult.name} - ${testResult.error || 'No error details'}`
               );
             } else if (testResult.status === TestStatus.SKIPPED) {
               // Log skipped tests
-              loggerModule.info(
+              loggerInstance.info(
                 FeatureArea.UI, 
                 `Test skipped for feature ${featureName}: ${testResult.name}`,
                 { testId, reason: testResult.error || 'Dependencies not satisfied' }
@@ -289,13 +289,14 @@ export class FeatureTestService {
     
     // Import logger dynamically to avoid circular dependencies
     import('./logger').then(loggerModule => {
+      const loggerInstance = loggerModule.default;
       // Update the feature with area information in the core feature registry
-      const features = loggerModule.getFeatureVerificationStatus();
+      const features = loggerInstance.getFeatureVerificationStatus();
       if (features[featureName]) {
         // We can't directly set the area in the feature registry,
         // so we re-register with the same implementation status
         const feature = features[featureName];
-        loggerModule.registerFeature(
+        loggerInstance.registerFeature(
           featureName,
           feature.implemented,
           feature.tested,
