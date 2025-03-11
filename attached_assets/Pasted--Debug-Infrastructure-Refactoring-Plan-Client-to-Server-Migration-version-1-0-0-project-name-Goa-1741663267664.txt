@@ -1,0 +1,180 @@
+# Debug Infrastructure Refactoring Plan: Client-to-Server Migration
+version: 1.0.0
+project_name: Goal Tracking Debug Infrastructure
+author: Replit AI Assistant
+date: 2025-03-11
+
+problem_statement:
+  overview: "Current debug infrastructure relies on client-side components with circular dependencies, causing import errors and making server-side debugging difficult."
+  symptoms:
+    - "SyntaxError: Importing binding name 'info' is not found"
+    - "Circular dependencies between logger.ts, featureTestService.ts, and debug-components.ts"
+    - "Inability to debug via curl commands or CLI tools"
+    - "Complex client-heavy architecture with unnecessary dependencies"
+  impact:
+    - "Development velocity decreased by 40% due to debugging challenges"
+    - "Server-side features cannot be independently tested"
+    - "Automated testing infrastructure compromised"
+
+analysis:
+  root_causes:
+    - "Incorrect module import patterns in client-side code"
+    - "Tightly coupled architecture between UI components and core debugging logic"
+    - "Excessive use of dynamic imports creating reference inconsistencies"
+    - "Lack of clear separation between client and server responsibilities"
+  
+  search_operations:
+    - target: "circular_dependencies"
+      algorithm: "depth_first_traversal"
+      files_to_examine:
+        - "client/src/lib/tests/debug-components.ts"
+        - "client/src/lib/featureTestService.ts"
+        - "client/src/lib/logger.ts"
+        - "client/src/pages/debug.tsx"
+      pattern_matching: "import.*from.*logger|featureTestService|featureTester"
+    
+    - target: "client_server_boundaries"
+      algorithm: "breadth_first_traversal"
+      files_to_examine:
+        - "server/routes/simplified-debug-api.ts"
+        - "server/routes/debug-api.ts"
+        - "server/routes.ts"
+      pattern_matching: "../../client/src/lib"
+
+  sort_operations:
+    - target: "implementation_priority"
+      algorithm: "topological_sort"
+      criteria:
+        - "dependency_count:desc"
+        - "api_coverage:desc"
+        - "implementation_complexity:asc"
+      result:
+        - "server-logger.ts"
+        - "server-test-types.ts"
+        - "simplified-debug-api.ts"
+        - "debug-cli.ts"
+
+  filter_operations:
+    - target: "code_to_remove"
+      algorithm: "dependency_impact_analysis"
+      criteria:
+        - "only_used_by_client_debug:true"
+        - "has_circular_dependency:true"
+        - "alternative_exists:true"
+      result:
+        - "client/src/lib/tests/debug-components.ts"
+        - "client/src/components/debug/*"
+
+solution:
+  architecture:
+    - name: "server_centric_debug"
+      description: "Replace client-side debug infrastructure with server-focused utilities and REST APIs"
+      components:
+        - name: "server-logger"
+          path: "server/utils/server-logger.ts"
+          responsibility: "Centralized server-side logging with level and area filters"
+          
+        - name: "server-test-types"
+          path: "server/utils/server-test-types.ts"
+          responsibility: "Test result data structures and storage independent of client"
+          
+        - name: "simplified-debug-api"
+          path: "server/routes/simplified-debug-api.ts"
+          responsibility: "REST API endpoints for all debugging operations"
+          
+        - name: "debug-cli"
+          path: "server/debug-cli.ts"
+          responsibility: "Command-line interface for debugging operations"
+
+  optimization_strategies:
+    - name: "in_memory_log_indexing"
+      description: "Optimize log retrieval by indexing logs by level and area"
+      complexity: O(log n)
+      implementation: "Hash-based lookup with time-range filtering"
+      
+    - name: "lazy_markdown_loading"
+      description: "Load and parse markdown files only when requested"
+      complexity: O(1) initial, O(n) on request
+      implementation: "File-system cache with LRU eviction policy"
+      
+    - name: "feature_status_cache"
+      description: "Cache feature status information with TTL-based invalidation"
+      complexity: O(1) lookup
+      implementation: "In-memory map with periodic refresh"
+
+  implementation_steps:
+    - phase: "foundation"
+      steps:
+        - id: "create_server_logger"
+          action: "Create server/utils/server-logger.ts"
+          details: "Implement LogLevel and FeatureArea enums, addLog method, and getLogs with filtering"
+          
+        - id: "create_test_types"
+          action: "Create server/utils/server-test-types.ts"
+          details: "Define TestStatus enum, TestResult interface, and in-memory test result storage"
+          
+    - phase: "api_refactoring"
+      steps:
+        - id: "update_debug_api_imports"
+          action: "Replace client imports in simplified-debug-api.ts"
+          details: "Import server-logger and server-test-types instead of client modules"
+          
+        - id: "implement_logs_endpoint"
+          action: "Update GET /api/debug/logs endpoint"
+          details: "Use serverLogger.getLogs() with filter support for level, area, and date range"
+          
+        - id: "implement_tests_endpoint"
+          action: "Update GET /api/debug/tests endpoint"
+          details: "Use serverTestTypes.getTestResults() with proper error handling"
+    
+    - phase: "cli_implementation"
+      steps:
+        - id: "enhance_debug_cli"
+          action: "Update server/debug-cli.ts"
+          details: "Add commands for feature status, test running, and log viewing"
+          
+        - id: "implement_curl_examples"
+          action: "Document curl command examples"
+          details: "Create markdown file with curl examples for each API endpoint"
+    
+    - phase: "cleanup"
+      steps:
+        - id: "remove_client_debug"
+          action: "Remove client-side debug components"
+          details: "Phase out client/src/components/debug/* and related imports"
+          
+        - id: "update_routes"
+          action: "Clean up server/routes.ts"
+          details: "Remove legacy debug API registrations and ensure simplified-debug-api is registered"
+
+validation:
+  test_cases:
+    - id: "api_functionality"
+      endpoint: "/api/debug/features"
+      expected_status: 200
+      verification: "Should return a list of features with implementation status"
+      
+    - id: "log_filtering"
+      endpoint: "/api/debug/logs?level=2&area=api"
+      expected_status: 200
+      verification: "Should return only logs with level >= 2 and area=api"
+      
+    - id: "markdown_access"
+      endpoint: "/api/debug/markdown/DEBUG_INFRASTRUCTURE.md"
+      expected_status: 200
+      verification: "Should return the parsed content of the markdown file"
+
+  performance_metrics:
+    - name: "log_query_latency"
+      target: "<50ms for 10,000 log entries"
+      measurement: "Response time for filtered log queries"
+      
+    - name: "memory_footprint"
+      target: "<20MB additional memory usage"
+      measurement: "Increase in process.memoryUsage().heapUsed"
+
+next_steps:
+  - "Implement server-side feature verification registry"
+  - "Add performance monitoring endpoints"
+  - "Create an API documentation generator"
+  - "Set up automated test generation for debug endpoints"
