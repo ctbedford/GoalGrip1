@@ -167,16 +167,21 @@ export function clearLogs(): void {
 
 /**
  * Update feature test results
+ * @param testId ID of the test to update
+ * @param result Test result or map of test results
  */
 export function updateFeatureTestResult(testId: string, result: FeatureTestResult | Record<string, FeatureTestResult>): void {
+  // Check if it's a single result or multiple results
   if ('id' in result) {
-    // Single test result
-    storage.featureTestResults[testId] = result;
+    // It's a single test result 
+    const testResult = result as FeatureTestResult;
+    storage.featureTestResults[testId] = testResult;
   } else {
-    // Multiple test results
+    // It's multiple test results
+    const multipleResults = result as Record<string, FeatureTestResult>;
     storage.featureTestResults = {
       ...storage.featureTestResults,
-      ...result
+      ...multipleResults
     };
   }
   
