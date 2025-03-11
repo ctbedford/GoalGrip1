@@ -68,28 +68,85 @@ export function FeatureStatusDashboard() {
     (Object.values(filteredFeatures).filter(f => f.implemented && f.tested).length / totalFeatures) * 100 : 0;
   
   // Load feature verification status
-  const loadFeatureStatus = () => {
+  const loadFeatureStatus = async () => {
     setIsLoading(true);
-    const verificationStatus = logger.getFeatureVerificationStatus();
     
-    // Convert to our component's data structure
-    const featureStatusMap: Record<string, FeatureStatus> = {};
-    
-    Object.entries(verificationStatus).forEach(([name, status]) => {
-      featureStatusMap[name] = {
-        name,
-        implemented: status.implemented,
-        tested: status.tested,
-        lastVerified: status.lastVerified,
-        notes: status.notes,
-        // Try to determine the area from the name
-        area: determineFeatureArea(name)
-      };
-    });
-    
-    setFeatures(featureStatusMap);
-    applyFilters(featureStatusMap, searchQuery, areaFilter, statusFilter);
-    setIsLoading(false);
+    try {
+      // Fetch feature status from server API
+      const response = await fetch('/api/debug/query', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: 'getFeatureVerificationStatus'
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch feature status');
+      }
+      
+      const data = await response.json();
+      const serverFeatures = data.result || {};
+      
+      // Convert to our component's data structure
+      const featureStatusMap: Record<string, FeatureStatus> = {};
+      
+      Object.entries(serverFeatures).forEach(([name, status]: [string, any]) => {
+        featureStatusMap[name] = {
+          name,
+          implemented: status.implemented,
+          tested: status.tested,
+          lastVerified: status.lastVerified ? new Date(status.lastVerified) : null,
+          notes: status.notes || [],
+          // Try to determine the area from the name
+          area: determineFeatureArea(name)
+        };
+      });
+      
+      // If API call fails, fall back to local storage
+      if (Object.keys(featureStatusMap).length === 0) {
+        const verificationStatus = logger.getFeatureVerificationStatus();
+        
+        Object.entries(verificationStatus).forEach(([name, status]) => {
+          featureStatusMap[name] = {
+            name,
+            implemented: status.implemented,
+            tested: status.tested,
+            lastVerified: status.lastVerified,
+            notes: status.notes,
+            area: determineFeatureArea(name)
+          };
+        });
+      }
+      
+      console.log('Loaded features from server:', featureStatusMap);
+      setFeatures(featureStatusMap);
+      applyFilters(featureStatusMap, searchQuery, areaFilter, statusFilter);
+    } catch (error) {
+      console.error('Error loading feature status:', error);
+      
+      // Fall back to local feature verification
+      const verificationStatus = logger.getFeatureVerificationStatus();
+      const featureStatusMap: Record<string, FeatureStatus> = {};
+      
+      Object.entries(verificationStatus).forEach(([name, status]) => {
+        featureStatusMap[name] = {
+          name,
+          implemented: status.implemented,
+          tested: status.tested,
+          lastVerified: status.lastVerified,
+          notes: status.notes,
+          area: determineFeatureArea(name)
+        };
+      });
+      
+      setFeatures(featureStatusMap);
+      applyFilters(featureStatusMap, searchQuery, areaFilter, statusFilter);
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   // Determine feature area from name (best guess based on name)
@@ -185,7 +242,12 @@ export function FeatureStatusDashboard() {
   
   // Initial load
   useEffect(() => {
-    loadFeatureStatus();
+    // Call the async function within useEffect
+    const fetchFeatures = async () => {
+      await loadFeatureStatus();
+    };
+    
+    fetchFeatures();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   
@@ -221,7 +283,12 @@ export function FeatureStatusDashboard() {
             <Button 
               variant="outline" 
               size="icon" 
-              onClick={loadFeatureStatus} 
+              onClick={() => {
+                const fetchFeatures = async () => {
+                  await loadFeatureStatus();
+                };
+                fetchFeatures();
+              }} 
               disabled={isLoading}
             >
               <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
