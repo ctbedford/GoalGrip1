@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { info, FeatureArea } from '@/lib/logger';
+import logger, { FeatureArea } from '@/lib/logger';
 
 const MARKDOWN_FILES = [
   { label: 'API Standards', value: 'API_STANDARDS.md' },
@@ -31,7 +31,7 @@ export function MarkdownViewer() {
     setError(null);
     
     try {
-      info(FeatureArea.UI, `Loading markdown file: ${filename}`);
+      logger.info(FeatureArea.UI, `Loading markdown file: ${filename}`);
       const response = await fetch(`/${filename}`);
       
       if (!response.ok) {
@@ -40,7 +40,7 @@ export function MarkdownViewer() {
       
       const content = await response.text();
       setMarkdownContent(content);
-      info(FeatureArea.UI, `Markdown file loaded: ${filename}`, { size: content.length });
+      logger.info(FeatureArea.UI, `Markdown file loaded: ${filename}`, { size: content.length });
     } catch (err) {
       const errMessage = err instanceof Error ? err.message : 'Unknown error loading markdown file';
       setError(errMessage);

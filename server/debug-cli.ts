@@ -20,8 +20,8 @@
  *   npx tsx server/debug-cli.ts logs [--level=<level>] [--area=<area>] [--limit=<number>]
  */
 
-import { FeatureArea, LogLevel } from '@/lib/logger';
-import * as debugStorage from '@/lib/debugStorage';
+import { FeatureArea, LogLevel, serverLogger } from './utils/server-logger';
+import { TestStatus, serverTestTypes } from './utils/server-test-types';
 import * as debugUtils from './utils/debug-utils';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -220,14 +220,15 @@ function handleLogsCommand(args: string[]) {
   const filters: any = {};
   if (level) filters.level = LogLevel[level.toUpperCase() as keyof typeof LogLevel];
   if (area) filters.area = FeatureArea[area.toUpperCase() as keyof typeof FeatureArea];
+  if (limit) filters.limit = limit;
   
-  const logs = debugStorage.getLogEntries(filters);
-  const limitedLogs = logs.slice(-limit);
+  const logs = serverLogger.getLogs(filters);
+  const limitedLogs = limit ? logs : logs.slice(-20); // Default to last 20 if no limit specified
   
   console.log(`Found ${logs.length} logs, showing latest ${limitedLogs.length}:`);
   
   // Display logs
-  limitedLogs.forEach((log, i) => {
+  limitedLogs.forEach((log: { timestamp: Date; level: LogLevel; area: FeatureArea; message: string; data?: any }, i: number) => {
     const timestamp = log.timestamp.toISOString();
     const level = LogLevel[log.level];
     const area = log.area;

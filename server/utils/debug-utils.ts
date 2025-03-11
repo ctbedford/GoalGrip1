@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { FeatureArea } from '@/lib/logger';
+import { FeatureArea } from './server-logger';
 
 /**
  * Debug Utilities

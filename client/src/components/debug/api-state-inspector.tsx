@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { ApiEndpoint } from '@/lib/apiTester';
 
-import { FeatureArea, info } from '@/lib/logger';
+import logger, { FeatureArea } from '@/lib/logger';
 
 /**
  * API State Inspector Component
@@ -57,7 +57,7 @@ export function ApiStateInspector() {
     setError(prev => ({ ...prev, [endpointId]: null }));
 
     try {
-      info(FeatureArea.API, `Fetching data for ${endpoint.label}`, { path: endpoint.path });
+      logger.info(FeatureArea.API, `Fetching data for ${endpoint.label}`, { path: endpoint.path });
       const response = await fetch(endpoint.path).then(res => {
         if (!res.ok) throw new Error(`HTTP error ${res.status}`);
         return res.json();
@@ -68,7 +68,7 @@ export function ApiStateInspector() {
         [endpointId]: response 
       }));
       
-      info(FeatureArea.API, `Successfully fetched data for ${endpoint.label}`, { 
+      logger.info(FeatureArea.API, `Successfully fetched data for ${endpoint.label}`, { 
         path: endpoint.path,
         dataSize: JSON.stringify(response).length
       });
@@ -76,7 +76,7 @@ export function ApiStateInspector() {
       const message = err instanceof Error ? err.message : 'Unknown error occurred';
       setError(prev => ({ ...prev, [endpointId]: message }));
       
-      info(FeatureArea.API, `Error fetching data for ${endpoint.label}`, { 
+      logger.info(FeatureArea.API, `Error fetching data for ${endpoint.label}`, { 
         path: endpoint.path,
         error: message
       });

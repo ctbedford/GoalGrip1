@@ -163,7 +163,7 @@ router.get('/features/:name', (req: Request, res: Response) => {
  */
 router.get('/tests', (req: Request, res: Response) => {
   try {
-    const testResults = debugStorage.getFeatureTestResults();
+    const testResults = serverTestTypes.getTestResults();
     
     // Format response
     const response = {
@@ -183,7 +183,7 @@ router.get('/tests', (req: Request, res: Response) => {
     console.error('Error fetching tests:', error);
     res.status(500).json({ 
       error: 'Failed to fetch tests',
-      details: error.message
+      details: error instanceof Error ? error.message : String(error)
     });
   }
 });
@@ -207,7 +207,7 @@ router.post('/tests/run/:id', async (req: Request, res: Response) => {
     console.error(`Error running test ${req.params.id}:`, error);
     res.status(500).json({ 
       error: 'Failed to run test',
-      details: error.message
+      details: error instanceof Error ? error.message : String(error)
     });
   }
 });
@@ -229,7 +229,7 @@ router.post('/tests/run-all', async (req: Request, res: Response) => {
     console.error('Error running all tests:', error);
     res.status(500).json({ 
       error: 'Failed to run all tests',
-      details: error.message
+      details: error instanceof Error ? error.message : String(error)
     });
   }
 });
@@ -249,7 +249,7 @@ router.get('/logs', (req: Request, res: Response) => {
     if (to) filters.toDate = new Date(to as string);
     
     // Get logs with filters
-    const logs = debugStorage.getLogEntries(filters);
+    const logs = serverLogger.getLogs(filters);
     
     // Apply limit - get most recent logs first
     const limitedLogs = logs.slice(-parseInt(limit as string));
@@ -265,7 +265,7 @@ router.get('/logs', (req: Request, res: Response) => {
     console.error('Error fetching logs:', error);
     res.status(500).json({ 
       error: 'Failed to fetch logs',
-      details: error.message
+      details: error instanceof Error ? error.message : String(error)
     });
   }
 });
@@ -301,7 +301,7 @@ router.get('/performance', (req: Request, res: Response) => {
     console.error('Error fetching performance metrics:', error);
     res.status(500).json({ 
       error: 'Failed to fetch performance metrics',
-      details: error.message
+      details: error instanceof Error ? error.message : String(error)
     });
   }
 });
@@ -329,7 +329,7 @@ router.get('/markdown', (req: Request, res: Response) => {
     console.error('Error listing markdown files:', error);
     res.status(500).json({ 
       error: 'Failed to list markdown files',
-      details: error.message
+      details: error instanceof Error ? error.message : String(error)
     });
   }
 });

@@ -28,7 +28,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 
 // Import all the debug utilities for direct access to their state
-import logger, { FeatureArea, LogLevel, getFeatureVerificationStatus } from '@/lib/logger';
+import logger, { FeatureArea, LogLevel } from '@/lib/logger';
 import * as apiTester from '@/lib/apiTester';
 import * as featureTester from '@/lib/featureTester';
 import * as debugStorage from '@/lib/debugStorage';
@@ -89,7 +89,7 @@ export function DebugToolchainInspector() {
 
   const availableFunctions = {
     // Logger functions
-    getFeatureVerificationStatus,
+    getFeatureVerificationStatus: logger.getFeatureVerificationStatus,
     markFeatureImplemented: logger.markFeatureImplemented,
     markFeatureTested: logger.markFeatureTested,
     registerFeature: logger.registerFeature,
